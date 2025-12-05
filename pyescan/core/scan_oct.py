@@ -162,7 +162,9 @@ class OCTScan(BaseScan):
     def _annotated_bscan(self, bscan_index: int, features=None) -> NDArray:
         image = self.images[bscan_index]
         masks = [annotation.images.get(bscan_index, None) for annotation in self.annotations.values()]
-        annotated_image = overlay_masks(image, masks, feature_names=self.annotations.keys(), alpha=0.5)
+        default_colors = generate_distinct_colors(len(self.annotations))
+        colors = [annotation._color or default_colors[i] for i, annotation in enumerate(self.annotations.values())]
+        annotated_image = overlay_masks(image, masks, colors=colors, feature_names=self.annotations.keys(), alpha=0.5)
         return annotated_image # Should maybe convert to PIL image
     
     def _annotated_enface(self,
@@ -175,7 +177,8 @@ class OCTScan(BaseScan):
         img_array = np.array(image.convert('RGBA'))
 
         # Generate colors if not provided
-        colors = generate_distinct_colors(len(self.annotations))
+        default_colors = generate_distinct_colors(len(self.annotations))
+        colors = [annotation._color or default_colors[i] for i, annotation in enumerate(self.annotations.values())]
 
         # Create an empty array for the overlay
         projected_masks = []

@@ -85,13 +85,17 @@ def get_fovea_enface_position(
     
     # Use the enface length to estimate the bscan spacing in enface px
     bscan_length = np.sqrt(bscan_dir_x**2 + bscan_dir_y**2)
-    enface_pixel_pex_mm = bscan_length / bscan_width
-    bscan_spacing = enface_pixel_pex_mm * bscan_depth
+    enface_pixel_per_mm = bscan_length / bscan_width
+    bscan_spacing = enface_pixel_per_mm * bscan_depth
     perp_length = ( bscan_index - fovea_v ) * bscan_spacing
     
     # Add perpendicular component
     fovea_enface_x = fovea_projection_x - perp_length * (bscan_dir_y / bscan_length)
     fovea_enface_y = fovea_projection_y + perp_length * (bscan_dir_x / bscan_length)
+    
+    print(fovea_v, bscan_index, fovea_enface_y)
+    print(1/enface_pixel_per_mm)
+    
     return fovea_enface_x, fovea_enface_y
 
 
@@ -437,8 +441,8 @@ def get_mask_area(
         mask_rows_count: MaskStat[int]
     ) -> Tuple[MaskStat[float], MaskStat[float], MaskStat[float]]:
     mask_area = mask_pixel_count * mask_resolutions_mm_width * mask_resolutions_mm_height
-    horizontal_extent = mask_columns_count * mask_resolutions_mm_width
-    vertical_extent = mask_rows_count * mask_resolutions_mm_height
+    mask_horizontal_extent = mask_columns_count * mask_resolutions_mm_width
+    mask_vertical_extent = mask_rows_count * mask_resolutions_mm_height
     return mask_area, mask_horizontal_extent, mask_vertical_extent
 
 
@@ -449,7 +453,7 @@ def get_mask_volume(
         resolutions_mm_depth: Meta[float], #bscan-spacing
     ) -> Tuple[MaskStat[float], MaskStat[float]]:
 
-    mask_volume = mas_area * resolutions_mm_depth
+    mask_volume = mask_area * resolutions_mm_depth
     mask_enface_area = mask_horizontal_extent * resolutions_mm_depth
     return mask_volume, mask_enface_area
 

@@ -117,6 +117,8 @@ def get_ce_export_summary(export_location, file_structure="pat/sdb", merged=True
             
     df_metadata = pd.DataFrame(scan_records)
     df_files = pd.DataFrame(file_records)
+    
+
         
     if merged:
         merge_cols = ['scan_uid']

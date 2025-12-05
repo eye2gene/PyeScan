@@ -53,14 +53,15 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
         """ Try search for annotations automatically """
         raise NotImplementedError()
         
-    def add_annotation(self, feature_name: str, annotation: Annotation) -> None:
+    def add_annotation(self, feature_name: str, annotation: Annotation, color=None) -> None:
         annotation._scan = self
+        if not color is None:
+            annotation._color = color
         self._annotations[feature_name] = annotation
         
     def add_annotations(self, annotation_dict: Dict[str,Annotation]) -> None:
         for feature_name, annotation in annotation_dict.items():
-            annotation._scan = self
-            self._annotations[feature_name] = annotation
+            self.add_annotation(feature_name, annotation)
             
     def set_parent(self, parent_scan: "BaseScan"):
         self._parent = parent_scan

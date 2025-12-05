@@ -73,6 +73,7 @@ class Annotation(metaclass=ABCMeta):
         self._modelinfo = modelinfo
         
         self._mask = None
+        self._color = None
         self._threshold = 0.5
         
     #@abstractmethod
