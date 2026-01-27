@@ -93,9 +93,6 @@ def get_fovea_enface_position(
     fovea_enface_x = fovea_projection_x - perp_length * (bscan_dir_y / bscan_length)
     fovea_enface_y = fovea_projection_y + perp_length * (bscan_dir_x / bscan_length)
     
-    print(fovea_v, bscan_index, fovea_enface_y)
-    print(1/enface_pixel_per_mm)
-    
     return fovea_enface_x, fovea_enface_y
 
 

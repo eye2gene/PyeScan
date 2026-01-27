@@ -6,7 +6,7 @@ PyeScan is a python library for streamlining the process of working with retinal
 ## Installing
 
 Installation is pretty standard
-```
+```bash
 git clone https://github.com/pontikos-lab/PyeScan.git
 cd PyeScan/
 pip install -e .
@@ -107,6 +107,24 @@ df_with_stats
 New metrics can also be added - there is a function wrapper provided for doing this, see `pyescan.metrics.metrics.py` for examples (documentation to follow).
 
 
+### Image registration
+
+Basic image registration is supported via [retinalysis](https://github.com/Eyened/retinalysis-registration), in particular helper functions are added for computing registrations for all pairs of images, and converting into a set of "optimised" poses, making use of the cycle consistency property (i.e. any composition of homographies in a cycle should give the identity matrix). This is very much WIP and may be removed from PyeScan in future (hopefully into another repo), but for now the tools can be used as follows:
+
+```python
+from pyescan.tools.image_registration import get_transforms, get_cleaned_poses, visualise_poses
+
+print("Registering pairs")
+transforms = get_transforms(img_paths)
+
+print("Inferring poses")
+poses = get_cleaned_poses(transforms)
+
+visualise_poses(poses)
+```
+(N.B: Suggest running with just a limited number of images, as currently registration is done for all pairs)
+
+
 ### Helper functions
 
 In `pyescan.tools.dataset_utils` there are two useful dataset functions `summarise_dataset`, and `get_pe_export_summary`
@@ -114,7 +132,7 @@ In `pyescan.tools.dataset_utils` there are two useful dataset functions `summari
 `summarise_dataset` simply traverses a directory structure and finds all files matching a particular file structure, and summarises them in a single pandas dataframe.
 
 For example
-```
+```python
 summarise_dataset([ROOT_DIRECTORY], structure="{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png"
 ```
 Will get all files that look like `{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png` (compared to the `[ROOT_DIRECTORY]`) and list them in a table with columns for `pat`, `sdb`, `source_id`, and `bscan_index` (as well as `file_path`). As you cna imagine this can be very useful for loading different types of input file structures.

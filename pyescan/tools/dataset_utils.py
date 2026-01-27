@@ -38,6 +38,9 @@ def _process_ce_metadata(metadata, identifier_dict, skip_image_level=False):
         scan_data['scan_number'] = i 
         scan_data['date'] = scan_date
         scan_data.update(series_info)
+        
+        if scan.get("crystal_eye_laterality"):
+            scan_data["group_laterality"] = scan["crystal_eye_laterality"]
 
         # workaround for name collision
         scan_data['series_source_id'] = metadata['series']['source_id']
@@ -49,6 +52,7 @@ def _process_ce_metadata(metadata, identifier_dict, skip_image_level=False):
         scan_data['scan_height_px'] = scan['size']['height']
         for attr in ['dimensions_mm', 'resolutions_mm']:
             scan_data.update(_flatten_dict(scan[attr], attr))
+            
 
         if skip_image_level:
             scan_records.append(scan_data)
@@ -117,8 +121,6 @@ def get_ce_export_summary(export_location, file_structure="pat/sdb", merged=True
             
     df_metadata = pd.DataFrame(scan_records)
     df_files = pd.DataFrame(file_records)
-    
-
         
     if merged:
         merge_cols = ['scan_uid']
@@ -244,6 +246,9 @@ def narrow_to_wide(df, pivot_col, identifier_cols, verbose=True, flatten_column_
     
     # Get pivot cols
     index_cols, value_cols = detect_pivot_cols(df, pivot_col, identifier_cols)
+    
+    # Remove pivot_col if it gets picked up in index_cols
+    if pivot_col in index_cols: index_cols.remove(pivot_col)
     
     if verbose:
         print("Pivoting on ", value_cols)
