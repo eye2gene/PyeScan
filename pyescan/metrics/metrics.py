@@ -142,36 +142,32 @@ def _get_quadrant_masks(
         fovea_enface_y: Pred[int]
     ) -> Tuple[Spec[np.array], Spec[np.array], Spec[np.array], Spec[np.array]]:
     import numpy as np
-    # Should probably normalise fovea position by actual image size...
+    
+    # Should probably normalise fovea position by actual image size, not just assume mask size = img size...
 
     im_w = mask_width_px
     im_h = mask_height_px
     
     center_x, center_y = fovea_enface_x, fovea_enface_y
     
+    # 0,0 on enface corresponds to upper left (when facing image), i.e. y is inverted
+    # upper left half is x < -y or -x > y, upper right is y < x or -y > -x
+    
     y, x = np.ogrid[:im_h, :im_w]
-    upper_left  = (center_y - y >= x - center_x) # increasing y is bottom
-    upper_right = (center_y - y >= center_x - x) # increasing y is bottom
+    upper_left  = (center_y - y >= x - center_x) 
+    upper_right = (center_y - y >= center_x - x) 
     
-    """
-    masks = [ np.zeros((im_h, im_w)) for _ in range(4) ]
-    masks[0][ upper_left &  upper_right] = 1.0 # Upper
-    masks[1][~upper_left &  upper_right] = 1.0 # Right (as viewed)
-    masks[2][~upper_left & ~upper_right] = 1.0 # Lower
-    masks[3][ upper_left & ~upper_right] = 1.0 # left (as viewed)
-    
-    quadrant_mask_superior, quadrant_mask_dexter, \
-    quadrant_mask_inferior, quadrant_mask_sinister = masks
-    """
+    # Get insection of mask pairs
     quadrant_mask_superior =  upper_left &  upper_right # UpL+UpR
     quadrant_mask_dexter   = ~upper_left &  upper_right # LowR+UpR
     quadrant_mask_inferior = ~upper_left & ~upper_right # LowR+LowL
     quadrant_mask_sinister =  upper_left & ~upper_right # UpL+LowL
     
+    # Explicit return for automatic naming
     return ( quadrant_mask_superior,
-             quadrant_mask_dexter,
+             quadrant_mask_dexter, # Right as viewed
              quadrant_mask_inferior,
-             quadrant_mask_sinister ) # Explicit return for automatic naming
+             quadrant_mask_sinister ) # Left as viewed
 
 
 @pyescan_metric(
@@ -312,7 +308,9 @@ def _get_quadrant_masks_slice(
         fovea_enface_y: Pred[int],
     ) -> Tuple[Spec[np.array], Spec[np.array], Spec[np.array], Spec[np.array]]:
     import numpy as np
-
+    
+    # Idea - make masks for upper left and upper right and multiply them
+    
     # Get bscan start and end positions of current b-scan
     bscan_start_x, bscan_start_y = bscan_location_start_x, bscan_location_start_y
     bscan_end_x, bscan_end_y = bscan_location_end_x, bscan_location_end_y
@@ -320,49 +318,44 @@ def _get_quadrant_masks_slice(
     # Get B-scan's start/end points relative to fovea
     start_x, start_y = bscan_start_x - fovea_enface_x, bscan_start_y - fovea_enface_y
     end_x, end_y = bscan_end_x - fovea_enface_x, bscan_end_y - fovea_enface_y
-
+    
+    # 0,0 on enface correspoponds to upper left (when facing image), i.e. y is inverted
+    # upper left half is x < -y or -x > y, upper right is y < x
+    # rearranging for co-ord transform 0 < -(y+x) and 0 < (x-y)
+    
     # Do co-ordinate shift w=y-x, z=y+x (equiv to rotation + scale)
-    start_w, start_z = start_y - start_x, start_x + start_y
-    end_w, end_z = end_y - end_x, end_x + end_y
+    start_w, start_z = - start_x - start_y, start_x - start_y
+    end_w, end_z = - end_x - end_y, end_x - end_y
     
-    # upper left is x < y, upper right is y > -x or -y < x
-    # rearranging for co-ord transfm 0 < (y-x) and 0 < (x+y)
-
-    # Calculate mask of upper and left quadrants, y > x, w > 0
-    #upper_left = np.zeros((mask_height_px, mask_width_px))
-    upper_left = np.zeros((1, mask_width_px)) # Use broadcasting for performance
-    v_intercept = - start_z / (end_z - start_z) # w-axis intercept
-    if 0 <= v_intercept <= 1:
-        x_intercept = int(v_intercept * (mask_width_px - 1))
-        if end_z > start_z:
-            upper_left[...,x_intercept:] = 1.
-        else:
-            upper_left[...,:x_intercept] = 1.
-    elif start_z > 0:
-        upper_left[...] = 1.
-        
-    # Calculate mask of upper and right quadrants, y > -x, z > 0
-    #upper_right = np.zeros((mask_height_px, mask_width_px))
-    upper_right = np.zeros((1, mask_width_px)) # Use broadcasting for performance
-    v_intercept = - start_w / (end_w - start_w) # z-axis intercept
-    if 0 <= v_intercept <= 1:
-        x_intercept = int(v_intercept * (mask_width_px - 1))
-        if end_w > start_w:
-            upper_right[...,x_intercept:] = 1.
-        else:
-            upper_right[...,:x_intercept] = 1.
-    elif start_w > 0:
-        upper_right[...] = 1.
+    def _get_intercept_mask(start_v, end_v):
+        mask = np.zeros((1, mask_width_px)) # Use broadcasting for performance
+        t = - start_v / (end_v - start_v) # axis intercept
+        if 0 <= t <= 1:
+            x_intercept = int(t * (mask_width_px - 1))
+            if end_v > start_v:
+                mask[...,x_intercept:] = 1.
+            else:
+                mask[...,:x_intercept] = 1.
+        elif start_v > 0:
+            mask[...] = 1.
+        return mask
     
-    # Idea - make masks for upper left and upper right and multiply them
+    # Calculate mask of upper and left quadrants, -y > x, w > 0
+    upper_left = _get_intercept_mask(start_w, end_w)
+    
+    # Calculate mask of upper and right quadrants, -y > -x, z > 0
+    upper_right = _get_intercept_mask(start_z, end_z)
+    
+    # Multiply masks together to get the intersection - just need to match names
+    # su upper_left x upper_right lust gives upper, and so on
     quadrant_mask_slice_superior = upper_left     * upper_right     # Upper
     quadrant_mask_slice_dexter   = (1-upper_left) * upper_right     # Right (as viewed)
     quadrant_mask_slice_inferior = (1-upper_left) * (1-upper_right) # Lower
     quadrant_mask_slice_sinister = upper_left     * (1-upper_right) # left (as viewed)
     return ( quadrant_mask_slice_superior,
-             quadrant_mask_slice_dexter,
+             quadrant_mask_slice_dexter, #Right as viewed
              quadrant_mask_slice_inferior,
-             quadrant_mask_slice_sinister )
+             quadrant_mask_slice_sinister ) #Left as viewed
 
 
 @pyescan_metric(
@@ -469,10 +462,10 @@ def get_mask_volume(
 def get_area_by_distance(
         mask_resolutions_mm_width: MaskStat[float],
         mask_resolutions_mm_height: MaskStat[float],
-        pixel_count: MaskStat[int],
+        pixel_count_region: MaskStat[int],
         diameter: float,
     ) -> Tuple[MaskStat[float],]:
-    mask_area = pixel_count * mask_resolutions_mm_width * mask_resolutions_mm_height
+    mask_area = pixel_count_region * mask_resolutions_mm_width * mask_resolutions_mm_height
     return mask_area,
 
 
@@ -490,10 +483,10 @@ def get_area_by_distance(
 def get_area_by_quadrant(
         mask_resolutions_mm_width: MaskStat[float],
         mask_resolutions_mm_height: MaskStat[float],
-        pixel_count: MaskStat[int],
+        pixel_count_region: MaskStat[int],
         quadrant: str,
     ) -> Tuple[MaskStat[float],]:
-    mask_area = pixel_count * mask_resolutions_mm_width * mask_resolutions_mm_height
+    mask_area = pixel_count_region * mask_resolutions_mm_width * mask_resolutions_mm_height
     return mask_area,
 
 
@@ -504,18 +497,18 @@ def get_area_by_quadrant(
         "stat:mask_pixel_count_<diameter>_mm_<quadrant>",
     ],
     returns=[
-        "area_<diameter>_mm_<quadrant>",
+        "mask_area_<diameter>_mm_<quadrant>",
     ],
     parameters = ["diameter", "quadrant"],
 )
 def get_area_by_distance_quadrant(
         mask_resolutions_mm_width: MaskStat[float],
         mask_resolutions_mm_height: MaskStat[float],
-        pixel_count: MaskStat[int],
+        pixel_count_region: MaskStat[int],
         diameter: float,
         quadrant: str,
     ) -> Tuple[MaskStat[float],]:
-    mask_area = pixel_count * mask_resolutions_mm_width * mask_resolutions_mm_height
+    mask_area = pixel_count_region * mask_resolutions_mm_width * mask_resolutions_mm_height
     return mask_area,
 
 
@@ -537,11 +530,11 @@ def get_volume_by_distance(
         mask_resolutions_mm_width: MaskStat[float],
         mask_resolutions_mm_height: MaskStat[float],
         resolutions_mm_depth: Meta[float],
-        pixel_count: MaskStat[int],
+        pixel_count_region: MaskStat[int],
         columns_count: MaskStat[int],
         diameter: float,
     ) -> Tuple[MaskStat[float], MaskStat[float]]:
-    volume = pixel_count * mask_resolutions_mm_width * mask_resolutions_mm_height * resolutions_mm_depth
+    volume = pixel_count_region * mask_resolutions_mm_width * mask_resolutions_mm_height * resolutions_mm_depth
     enface_area = columns_count * mask_resolutions_mm_width * resolutions_mm_depth
     return volume, enface_area
 
@@ -564,11 +557,11 @@ def get_volume_by_quadrant(
         mask_resolutions_mm_width: MaskStat[float],
         mask_resolutions_mm_height: MaskStat[float],
         resolutions_mm_depth: Meta[float],
-        pixel_count: MaskStat[int],
+        pixel_count_region: MaskStat[int],
         columns_count: MaskStat[int],
         quadrant: str,
     ) -> Tuple[MaskStat[float], MaskStat[float]]:
-    volume = pixel_count * mask_resolutions_mm_width * mask_resolutions_mm_height * resolutions_mm_depth
+    volume = pixel_count_region * mask_resolutions_mm_width * mask_resolutions_mm_height * resolutions_mm_depth
     enface_area = columns_count * mask_resolutions_mm_width * resolutions_mm_depth
     return volume, enface_area
 
@@ -591,11 +584,11 @@ def get_volume_by_distance_quadrant(
         mask_resolutions_mm_width: MaskStat[float],
         mask_resolutions_mm_height: MaskStat[float],
         resolutions_mm_depth: Meta[float],
-        pixel_count: MaskStat[int],
+        pixel_count_region: MaskStat[int],
         columns_count: MaskStat[int],
         diameter: float,
         quadrant: str,
     ) -> Tuple[MaskStat[float], MaskStat[float]]:
-    volume = pixel_count * mask_resolutions_mm_width * mask_resolutions_mm_height * resolutions_mm_depth
+    volume = pixel_count_region * mask_resolutions_mm_width * mask_resolutions_mm_height * resolutions_mm_depth
     enface_area = columns_count * mask_resolutions_mm_width * resolutions_mm_depth
     return volume, enface_area
