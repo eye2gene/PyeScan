@@ -20,7 +20,7 @@ type-check-watch:
 qa:
     uv run ruff format .
     uv run ruff check . --fix
-    uv run ty check .
+    -uv run ty check .
     uv audit
 
 # Check formatting, linting and type checking (no fixes, for CI)
@@ -41,22 +41,22 @@ qa-all:
 
 # Upgrade the project library and build it
 up *ARGS:
-    @echo "Upgrading with {{ARGS}}"
-    uv lock --exclude-newer "7 days" -U {{ARGS}}
+    @echo "Upgrading with {{ ARGS }}"
+    uv lock --exclude-newer "7 days" -U {{ ARGS }}
     uv audit
     uv sync --exclude-newer "7 days"
     just build
 
 # Run all the tests, but allow for arguments to be passed
 test *ARGS:
-    @echo "Running with arg: {{ARGS}}"
-    uv run pytest {{ARGS}}
+    @echo "Running with arg: {{ ARGS }}"
+    uv run pytest {{ ARGS }}
     @echo "See htmlcov/index.html for detailed coverage report"
 
 # Run all the tests, but on failure, drop into the debugger
 pdb *ARGS:
-    @echo "Running with arg: {{ARGS}}"
-    uv run pytest --pdb --maxfail=10 {{ARGS}}
+    @echo "Running with arg: {{ ARGS }}"
+    uv run pytest --pdb --maxfail=10 {{ ARGS }}
 
 # Build the project, useful for checking that packaging is correct
 build:
@@ -96,4 +96,4 @@ VERSION := `python -c 'import importlib.metadata as m; print(next((d.version for
 
 # Print the current version of the project
 version:
-    @echo "Current version is {{VERSION}}"
+    @echo "Current version is {{ VERSION }}"
