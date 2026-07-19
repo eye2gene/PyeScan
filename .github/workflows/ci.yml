@@ -1,0 +1,17 @@
+name: CI
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - "uv.lock"
+      - "justfile"
+      - ".github/**"
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: eye2Gene/e2g-pypkg/.github/workflows/python-ci.yml@main
