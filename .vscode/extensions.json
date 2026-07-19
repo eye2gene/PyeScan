@@ -1,0 +1,28 @@
+{
+  "recommendations": [
+    // Python
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.debugpy",
+    "astral-sh.ty",
+    "charliermarsh.ruff-vscode",
+    "ryanluker.vscode-coverage-gutters",
+    // Git
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "donjayamanne.githistory",
+    "vivaxy.vscode-conventional-commits",
+    "GitHub.vscode-pull-request-github",
+    // File formats
+    "tombi-toml.tombi",
+    "redhat.vscode-yaml",
+    "DavidAnson.vscode-markdownlint",
+    "yzhang.markdown-all-in-one",
+    "nefrob.vscode-just-syntax",
+    // Editor
+    "editorconfig.editorconfig",
+    "esbenp.prettier-vscode",
+    "streetsidesoftware.code-spell-checker",
+    "fill-labs.dependi"
+  ]
+}

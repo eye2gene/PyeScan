@@ -1,0 +1,42 @@
+{
+  "cSpell.words": ["pyescan", "bscan", "bscans", "enface", "retinal"],
+  "files.watcherExclude": {
+    "**/.env/**": true,
+    "**/.venv/**": true,
+    "**/env/**": true,
+    "**/venv/**": true,
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true,
+    "**/.mypy_cache/*/**": true
+  },
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.testing.pytestArgs": ["tests", "-v", "-c", "/dev/null"],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true,
+  "[yaml]": {
+    "editor.formatOnType": true,
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "python.terminal.launchArgs": ["-m", "IPython", "--no-autoindent"],
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnPaste": false,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    "editor.formatOnType": true
+  },
+  "python.analysis.typeCheckingMode": "off",
+  "python.analysis.diagnosticSeverityOverrides": {
+    "reportAttributeAccessIssue": "none",
+    "reportArgumentType": "none",
+    "reportGeneralTypeIssues": "none",
+    "reportOptionalSubscript": "none"
+  },
+  "mypy-type-checker.ignorePatterns": ["*"]
+}
