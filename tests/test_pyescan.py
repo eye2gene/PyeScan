@@ -1,6 +1,8 @@
-"""Basic smoke tests for pyescan."""
+"""Tests for `pyescan` package."""
+
+import pyescan
 
 
 def test_import() -> None:
-    """Verify pyescan can be imported."""
-    import pyescan  # noqa: F401
+    """Verify the package can be imported."""
+    assert pyescan
