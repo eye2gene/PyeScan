@@ -1,28 +1,28 @@
 {
   "recommendations": [
     // Python
-    "ms-python.python",
-    "ms-python.vscode-pylance",
-    "ms-python.debugpy",
-    "astral-sh.ty",
-    "charliermarsh.ruff-vscode",
-    "ryanluker.vscode-coverage-gutters",
+    "ms-python.python", // Python language support
+    "ms-python.vscode-pylance", // For completions/IntelliSense only
+    "ms-python.debugpy", // Python debugging
+    "astral-sh.ty", // Astral Typer for Python type checking (preferred over mypy)
+    "charliermarsh.ruff-vscode", // Ruff linting integration
+    "ryanluker.vscode-coverage-gutters", // Code coverage
     // Git
-    "eamodio.gitlens",
-    "mhutchie.git-graph",
-    "donjayamanne.githistory",
-    "vivaxy.vscode-conventional-commits",
-    "GitHub.vscode-pull-request-github",
+    "eamodio.gitlens", // GitLens for enhanced Git capabilities
+    "mhutchie.git-graph", // Git graph
+    "donjayamanne.githistory", // Git history
+    "vivaxy.vscode-conventional-commits", // Conventional commits support
+    "GitHub.vscode-pull-request-github", // GitHub Pull Requests and Issues
     // File formats
-    "tombi-toml.tombi",
-    "redhat.vscode-yaml",
-    "DavidAnson.vscode-markdownlint",
-    "yzhang.markdown-all-in-one",
-    "nefrob.vscode-just-syntax",
+    "tombi-toml.tombi", // TOML formatter/linter
+    "redhat.vscode-yaml", // YAML support
+    "DavidAnson.vscode-markdownlint", // Markdown linting
+    "yzhang.markdown-all-in-one", // Markdown support
+    "nefrob.vscode-just-syntax", // Justfile formatter/syntax highlighting
     // Editor
-    "editorconfig.editorconfig",
-    "esbenp.prettier-vscode",
-    "streetsidesoftware.code-spell-checker",
-    "fill-labs.dependi"
+    "editorconfig.editorconfig", // EditorConfig support
+    "esbenp.prettier-vscode", // Prettier for code formatting
+    "streetsidesoftware.code-spell-checker", // Spell checking
+    "fill-labs.dependi" // Dependency graph
   ]
 }

@@ -117,6 +117,7 @@ notebooks/figures
 MGX/
 TRX/
 .amazonq/
+python-boilerplate/
 
 # Marimo
 __marimo__/
