@@ -26,9 +26,8 @@ class MaskImage(LazyImage):
     def image(self) -> PILImage.Image:
         # Add exception for Missing filepath as we don't want to throw exception
         # if self._file_location is None or math.isnan(self._file_location):
-        if not isinstance(self._file_location, str):
-            if not self._raw_image:
-                return None
+        if not isinstance(self._file_location, str) and not self._raw_image:
+            return None
         return super().image
 
 

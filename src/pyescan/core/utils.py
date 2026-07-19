@@ -23,7 +23,7 @@ def _pad_array(data: NDArray, n: int) -> NDArray:  # TODO Axis
 
     if n > m:
         # Padding needed - create zeros to add
-        padding = np.zeros((n - m,) + data.shape[1:], dtype=data.dtype)
+        padding = np.zeros((n - m, *data.shape[1:]), dtype=data.dtype)
         # Concatenate along first axis
         result = np.concatenate([data, padding], axis=0)
     else:
@@ -55,11 +55,11 @@ class ArrayView:
                 # Special case as ellipsis can signify multiple indices
                 data = self.data
                 if len(index[1:]) == len(data.shape):
-                    return data[(slice(None),) + index[1:]]
+                    return data[(slice(None), *index[1:])]
                 else:
                     return data[index]
             elif isinstance(index[0], slice):
-                return self[index[0]].data[(slice(None),) + index[1:]]
+                return self[index[0]].data[(slice(None), *index[1:])]
             else:
                 return self[index[0]].data[index[1:]]
         elif isinstance(index, slice):

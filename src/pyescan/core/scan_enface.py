@@ -24,10 +24,7 @@ class EnfaceScan(SingleImageScan):
         return annotated_image  # Should maybe convert to PIL image
 
     def _build_display_widget(self):
-        if self.annotations:
-            enface_image = self._annotated_enface()
-        else:
-            enface_image = self.image
+        enface_image = self._annotated_enface() if self.annotations else self.image
         return enface_display_widget(enface_image, width=320, height=320)
 
     def _ipython_display_(self):

@@ -18,7 +18,7 @@ def get_results_from_dataframe(
     for pat_id, pat_entries in df.groupby(patient_id_key):
         gene = pat_entries["gene"].values[0]
         gene_ind = classes.index(gene)
-        for val, grouped_entries in pat_entries.groupby(group_on):
+        for _val, grouped_entries in pat_entries.groupby(group_on):
             pred_scores.append(grouped_entries[pandas_query].mean(axis=0))
             pat_ids.append(pat_id)
             truth.append(gene_ind)

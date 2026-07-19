@@ -33,7 +33,7 @@ def image_array_display_widget(images, width=320, height=320, return_slider=Fals
         readout_format="d",
     )
 
-    w_value = widgets.Label(
+    widgets.Label(
         value="Some text", layout={"width": str(width) + "px", "visible": "true"}
     )
 
@@ -61,7 +61,7 @@ def image_array_display_widget(images, width=320, height=320, return_slider=Fals
 
 def draw_bscan_lines(enface_image, bscan_positions, bscan_index=None, draw_pos=False):
     enface_image = enface_image.copy().convert("RGB")
-    width, height = enface_image.size
+    width, _height = enface_image.size
 
     draw = ImageDraw.Draw(enface_image)
     for i, bscan_position in enumerate(bscan_positions):
@@ -146,7 +146,9 @@ def overlay_rgba_images(image_list):
     total_alpha = np.clip(total_alpha, 1e-8, None)  # avoid division by zero
 
     # Weight each RGB by its alpha and sum
-    weighted_rgb = np.sum([(rgb * alpha) for rgb, alpha in zip(rgbs, alphas)], axis=0)
+    weighted_rgb = np.sum(
+        [(rgb * alpha) for rgb, alpha in zip(rgbs, alphas, strict=False)], axis=0
+    )
 
     # Normalize by total alpha
     final_rgb = weighted_rgb / total_alpha
@@ -194,7 +196,7 @@ def overlay_masks(
     overlay = np.zeros_like(img_array, dtype=np.float32)
 
     # Process each mask and color
-    for mask, color in zip(masks, colors):
+    for mask, color in zip(masks, colors, strict=False):
         # Skip missing masks
         if mask is None:
             continue
@@ -233,7 +235,7 @@ def overlay_masks(
 
         # Draw labels
         y_offset = 10
-        for name, color in zip(feature_names, colors):
+        for name, color in zip(feature_names, colors, strict=False):
             # Draw color swatch
             draw.rectangle(
                 [10, y_offset, 30, y_offset + 20], fill=color, outline="white"
@@ -269,14 +271,14 @@ def render_volume_data(
     # Create figure without displaying it
     fig, ax = plt.subplots(1, figsize=figsize)
 
-    n, h, w = data.shape
+    n, _h, w = data.shape
     X, Y = np.meshgrid(np.arange(w), np.arange(n))
 
     mask = data.any(axis=1)
     thickness = data.mean(axis=1)
 
     if heatmap:
-        im = ax.imshow(
+        ax.imshow(
             thickness,
             aspect="auto",
             cmap=cmap,
@@ -284,7 +286,7 @@ def render_volume_data(
             alpha=mask * 1.0,
         )
     else:
-        im = ax.imshow(
+        ax.imshow(
             mask, aspect="auto", cmap=cmap, interpolation="nearest", alpha=mask * 1.0
         )
 

@@ -53,7 +53,7 @@ class PandasRowWrapperHelper:
 def run_on_dataframe(
     df,
     stat_name: str | list[str],
-    col_mapping: dict[str, str] = {},
+    col_mapping: dict[str, str] | None = None,
     suffix: str = None,
     auto_merge: bool = False,
     named_only: bool = False,

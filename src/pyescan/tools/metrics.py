@@ -347,11 +347,15 @@ def get_pixel_count_at_distance(
     return results[0] if return_single_value else results
 
 
-def get_distance_pixel_counts(row, distances=[0.5, 1.5, 3.0]):
+def get_distance_pixel_counts(row, distances=None):
+    if distances is None:
+        distances = [0.5, 1.5, 3.0]
     return get_pixel_count_at_distance(row, distances, hextent_only=False)
 
 
-def get_distance_volumes(row, distances=[0.5, 1.5, 3.0], by_quadrant=False):
+def get_distance_volumes(row, distances=None, by_quadrant=False):
+    if distances is None:
+        distances = [0.5, 1.5, 3.0]
     scale_w = row.size_width / row.mask_width * row.resolutions_mm_width
     scale_h = row.size_height / row.mask_height * row.resolutions_mm_height
     scale = scale_w * scale_h * row.resolutions_mm_depth
@@ -362,12 +366,16 @@ def get_distance_volumes(row, distances=[0.5, 1.5, 3.0], by_quadrant=False):
     return [r * scale for r in results]
 
 
-def get_distance_horizontal_pixel_counts(row, distances=[0.5, 1.5, 3.0]):
+def get_distance_horizontal_pixel_counts(row, distances=None):
+    if distances is None:
+        distances = [0.5, 1.5, 3.0]
     return get_pixel_count_at_distance(row, distances, hextent_only=True)
 
 
 # TODO: Split into separate OCT and enface fucntions
-def get_distance_areas(row, distances=[0.5, 1.5, 3.0], by_quadrant=False):
+def get_distance_areas(row, distances=None, by_quadrant=False):
+    if distances is None:
+        distances = [0.5, 1.5, 3.0]
     hextent_only = row.modality == "OCT"
 
     if hextent_only:

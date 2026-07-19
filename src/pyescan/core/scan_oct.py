@@ -208,7 +208,7 @@ class OCTScan(BaseScan):
 
         # Create an empty array for the overlay
         projected_masks = []
-        for annotation, color in zip(self.annotations.values(), colors):
+        for annotation, color in zip(self.annotations.values(), colors, strict=False):
             data = _pad_array(annotation.data, len(self))
             rendered_mask = render_volume_data(
                 data, color=color, heatmap=heatmap, contours=contours
@@ -218,7 +218,7 @@ class OCTScan(BaseScan):
             projected_masks.append(projected_mask)
 
         # Apply alpha blending
-        imgs = [img_array] + projected_masks
+        imgs = [img_array, *projected_masks]
         result = overlay_rgba_images(imgs)
         result = result.astype(np.uint8)
 

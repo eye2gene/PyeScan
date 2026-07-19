@@ -124,11 +124,11 @@ class MetadataParserJSON(MetadataParser):
         for index in path:
             try:
                 pos = pos[index]
-            except:
+            except Exception as err:
                 raise Exception(
                     f"Unexpected element when parsing metadata, tried key {index},"
                     + "but was not found in {pos}"
-                )
+                ) from err
         return pos
 
     def _get_path(self, attribute_name: str, view_info: dict[str, Any] | None):
@@ -139,9 +139,8 @@ class MetadataParserJSON(MetadataParser):
     ) -> list[str | int] | None:
         mapped_path = list()
         for p in path:
-            if isinstance(p, str):
-                if p.startswith("{") and p.endswith("}"):
-                    p = view_info[p.strip("{}")]
+            if isinstance(p, str) and p.startswith("{") and p.endswith("}"):
+                p = view_info[p.strip("{}")]
             mapped_path.append(p)
         return mapped_path
 

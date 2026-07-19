@@ -145,8 +145,8 @@ class SegmentationDataLoader:
     def _load_image(self, image_path, labels_paths, image_shape):
         try:
             raw_scan = np.array(Image.open(image_path).convert("L"))
-        except:
-            raise Exception("Failed to load ", image_path)
+        except Exception as err:
+            raise Exception("Failed to load ", image_path) from err
 
         if not labels_paths:
             return raw_scan, None
@@ -164,8 +164,8 @@ class SegmentationDataLoader:
                     raw_labels[..., i] = (
                         np.array(Image.open(label_path).convert("L")) > 127
                     )
-                except:
-                    raise Exception("Failed to load ", feature_pth)
+                except Exception as err:
+                    raise Exception("Failed to load ", feature_pth) from err
 
         return raw_scan, raw_labels
 
@@ -260,8 +260,6 @@ def __scale_to_target_resolution(
     crop_y = int(new_height / 2 - output_dimension[1] / 2)
 
     # Crop the image
-    cropped_image = resized_image.crop(
-        (crop_x, crop_y, crop_x + crop_size[0], crop_y + crop_size[1])
-    )
+    resized_image.crop((crop_x, crop_y, crop_x + crop_size[0], crop_y + crop_size[1]))
 
     return cropped_img

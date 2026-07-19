@@ -132,7 +132,7 @@ def _compose_path(transforms, path_idxs, symmetric=True):
 
 def _get_node_idxs(transforms):
     node_idxs = set()
-    for source, target in transforms.keys():
+    for source, target in transforms:
         node_idxs.add(source)
         node_idxs.add(target)
     return list(node_idxs)
@@ -141,7 +141,7 @@ def _get_node_idxs(transforms):
 def _get_adjacency(transforms):
     """Node -> set of neighbours (undirected)"""
     adj = defaultdict(set)
-    for src, tgt in transforms.keys():
+    for src, tgt in transforms:
         adj[src].add(tgt)
         adj[tgt].add(src)
     return adj
@@ -157,7 +157,7 @@ def _calculate_cycle_errors(
     Scores cycle accoring to error_fn on composite homography.
     Only enumerates triangles where all three edges exist.
     """
-    edge_errors = {edge: [] for edge in transforms.keys()}
+    edge_errors = {edge: [] for edge in transforms}
 
     if node_idxs is None:
         node_idxs = _get_node_idxs(transforms)
@@ -298,7 +298,9 @@ def _optimize_poses(
 
 def find_centroid_pose(poses):
     """Simpy return the mean over A, t, p"""
-    all_A, all_t, all_p = zip(*[decompose_homography(pose) for pose in poses.values()])
+    all_A, all_t, all_p = zip(
+        *[decompose_homography(pose) for pose in poses.values()], strict=False
+    )
 
     init_centroid = np.eye(3)
     init_centroid[:2, :2] = np.mean(all_A, axis=0)
@@ -453,7 +455,7 @@ def visualise_poses(poses, node_paths=None, targ_shape=None, figsize=(8, 8)):
             transform = ProjectiveTransform(transform_M)
             imageT = transform.warp_inverse(image, shape)
 
-            fig, ax = plt.subplots(figsize=figsize)
+            _fig, ax = plt.subplots(figsize=figsize)
             ax.imshow(imageT)
             ax.axis("off")
             ax.set_title(

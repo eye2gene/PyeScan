@@ -12,13 +12,17 @@ class MetricProcessor:
         self.metrics = {m.name: m for m in metrics}
 
     def _stat_exists(
-        self, stat: str, entry_data: Any, cache: dict[str, Any] = {}
+        self, stat: str, entry_data: Any, cache: dict[str, Any] | None = None
     ) -> bool:
-        if stat in entry_data or stat in cache.get("computed_stats", {}):
-            return True
-        return False
+        if cache is None:
+            cache = {}
+        return bool(stat in entry_data or stat in cache.get("computed_stats", {}))
 
-    def _get_stat(self, stat: str, entry_data: Any, cache: dict[str, Any] = {}) -> Any:
+    def _get_stat(
+        self, stat: str, entry_data: Any, cache: dict[str, Any] | None = None
+    ) -> Any:
+        if cache is None:
+            cache = {}
         if stat in entry_data:
             return entry_data[stat]
         elif stat in cache["computed_stats"]:
@@ -31,9 +35,11 @@ class MetricProcessor:
         self,
         entry_data: Any,
         metric: Metric,
-        params: dict[str, Any] = {},
+        params: dict[str, Any] | None = None,
         cache: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        if params is None:
+            params = {}
         cache = cache or {}
 
         # Check if all returns already exist
@@ -76,7 +82,7 @@ class MetricProcessor:
             results = metric.fn(*input_list, **params)
 
         # Store results
-        return_dict = dict(zip(return_names, results))
+        return_dict = dict(zip(return_names, results, strict=False))
         cache["stats"] = return_dict
         if "computed_stats" in cache:
             cache["computed_stats"].update(return_dict)
@@ -102,15 +108,21 @@ class MetricProcessor:
         return self._resolve_dependency_stat(self._resolve_template(stat))
 
     def _generate_return_names(
-        self, metric: Metric, params: dict[str, Any] = {}
+        self, metric: Metric, params: dict[str, Any] | None = None
     ) -> list[str]:
+        if params is None:
+            params = {}
         return_names = [
             self._resolve_template(template, params)
             for template in metric.returns_template
         ]
         return [name for name in return_names if name is not None]
 
-    def _resolve_template(self, template: str, params: dict[str, Any] = {}) -> str:
+    def _resolve_template(
+        self, template: str, params: dict[str, Any] | None = None
+    ) -> str:
+        if params is None:
+            params = {}
         # Get rid of prefix
         template = template.split(":", 1)[-1]
 
@@ -146,7 +158,6 @@ class MetricProcessor:
         # First create a regex pattern from the template
         regex_pattern = "^"  # Start of string
         param_names = []
-        current_pos = 0
 
         # Find all parameters and optional sections
         parts = []

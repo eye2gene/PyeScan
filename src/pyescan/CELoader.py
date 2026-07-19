@@ -59,17 +59,17 @@ Model
 
 class CrystalEyeParser(MetadataParserJSON):
     _scan_level = ["images", "images", "{scan_number}"]
-    _image_level = _scan_level + ["contents", "{image_number}"]
+    _image_level = [*_scan_level, "contents", "{image_number}"]
 
     _path_map = {
-        "group": _scan_level + ["group"],
-        "source_id": _scan_level + ["source_id"],
-        "modality": _scan_level + ["modality"],
-        "manufacturer": _scan_level + ["manufacturer"],
-        "bscan_start_x": _image_level + ["photo_locations", 0, "start", "x"],
-        "bscan_start_y": _image_level + ["photo_locations", 0, "start", "y"],
-        "bscan_end_x": _image_level + ["photo_locations", 0, "end", "x"],
-        "bscan_end_y": _image_level + ["photo_locations", 0, "end", "y"],
+        "group": [*_scan_level, "group"],
+        "source_id": [*_scan_level, "source_id"],
+        "modality": [*_scan_level, "modality"],
+        "manufacturer": [*_scan_level, "manufacturer"],
+        "bscan_start_x": [*_image_level, "photo_locations", 0, "start", "x"],
+        "bscan_start_y": [*_image_level, "photo_locations", 0, "start", "y"],
+        "bscan_end_x": [*_image_level, "photo_locations", 0, "end", "x"],
+        "bscan_end_y": [*_image_level, "photo_locations", 0, "end", "y"],
     }
 
     def __init__(self):
@@ -109,20 +109,19 @@ class CrystalEyeParserCSV(MetadataParserCSV):
         "bscan_end_y": "bscan_location_end_y",
     }
 
-    def __init__(self, column_headings={}):
+    def __init__(self, column_headings=None):
         self._col_map = self._base_col_map.copy()
-        self._col_map.update(column_headings)
+        if column_headings:
+            self._col_map.update(column_headings)
         self._overrides = {"n_scans": self.n_scans}
 
     def _get_records_subset(self, metadata_record, view_info):
         df = metadata_record.raw
         if "scan_number" in view_info:
-            scan_number = metadata_record.raw.source_id.unique()[
-                view_info["scan_number"]
-            ]
+            metadata_record.raw.source_id.unique()[view_info["scan_number"]]
             df = df.query("source_id == @scan_number")
         if "image_number" in view_info:
-            image_number = view_info["image_number"]
+            view_info["image_number"]
             df = df.query("bscan_index == @image_number")
         return df
 
@@ -161,7 +160,7 @@ def load_records_from_CE(
     raise NotImplementedError()
 
 
-def load_record_from_df(df_scan, column_headings={}):
+def load_record_from_df(df_scan, column_headings=None):
     record = MetadataRecord(df_scan)
     metadata = record.get_view(
         parser=CrystalEyeParserCSV(column_headings=column_headings)
@@ -170,7 +169,9 @@ def load_record_from_df(df_scan, column_headings={}):
     return build_from_metadata(metadata)
 
 
-def load_records_from_df(df, column_headings={}, identifier_columns=["pat", "sdb"]):
+def load_records_from_df(df, column_headings=None, identifier_columns=None):
+    if identifier_columns is None:
+        identifier_columns = ["pat", "sdb"]
     from tqdm import tqdm
 
     scans = {}

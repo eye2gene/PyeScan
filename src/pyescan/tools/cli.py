@@ -113,8 +113,10 @@ def run_function_on_csv_cli(csv_file, function, output_csv=None, skip_prompt=Fal
     # Check if the specified function is available
     try:
         function_to_apply = globals()[function]
-    except KeyError:
-        raise ValueError(f"Function '{function}' not found in the global scope.")
+    except KeyError as err:
+        raise ValueError(
+            f"Function '{function}' not found in the global scope."
+        ) from err
 
     import pandas as pd
 
@@ -238,7 +240,7 @@ def run_metric_csv_cli(
     csv_file,
     stats,
     output_csv=None,
-    mapping={},
+    mapping=None,
     suffix=None,
     intermediates=False,
     threaded=False,
@@ -260,7 +262,7 @@ def run_metric_csv_cli(
 
     import pandas as pd
 
-    from ..metrics.helpers import run_on_dataframe
+    from pyescan.metrics.helpers import run_on_dataframe
 
     # Load CSV into a DataFrame
     df = pd.read_csv(csv_file)

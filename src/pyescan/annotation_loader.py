@@ -9,7 +9,7 @@ def _build_annotation_from_file_paths(
     file_paths,
 ):  # TODO - move to annotation constructor
     masks = list()
-    for i, file_path in enumerate(file_paths):
+    for _i, file_path in enumerate(file_paths):
         # mask_img = MaskImage(file_path)#None if i==3 else file_path)
         mask_img = MaskImage(file_path=file_path, mode="L")
         masks.append(mask_img)
@@ -20,7 +20,7 @@ def _build_annotation_from_file_paths(
 
 def _build_annotation_from_array(data):  # TODO - move to annotation constructor
     masks = list()
-    for i, bscan_data in enumerate(data):
+    for _i, bscan_data in enumerate(data):
         pil_img = PILImage.fromarray(bscan_data.astype(np.uint8))
         mask_img = MaskImage(raw_image=pil_img, mode="L")
         masks.append(mask_img)
@@ -32,7 +32,7 @@ def _build_annotation_from_array(data):  # TODO - move to annotation constructor
 def _build_annotation_from_dataframe_base(
     df, file_path_col="file_path", index_col="bscan_index"
 ):
-    df_copy = df.copy()
+    df.copy()
 
     # Convert bscan_index to int (it's float after to_numeric)
     df[index_col] = df[index_col].astype(int)

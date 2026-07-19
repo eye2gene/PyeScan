@@ -90,17 +90,14 @@ def pyescan_metric(
                     requirement_list.append(f"{prefix}{param_name}")
 
         # Handle returns
-        if returns:
-            names = returns
-        else:
-            names = _extract_return_names(func)
+        names = returns or _extract_return_names(func)
 
         return_hints = hints.get("return")
         # check if return hints for type annotation
         if hasattr(return_hints, "__args__"):
             return_list = [
                 f"{get_prefix(hint)}{name}"
-                for hint, name in zip(return_hints.__args__, names)
+                for hint, name in zip(return_hints.__args__, names, strict=False)
             ]
         else:
             return_list = [f"{get_prefix(return_hints)}{name}" for name in names]
