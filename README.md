@@ -1,26 +1,52 @@
 # PyeScan
 
-PyeScan is a python library for streamlining the process of working with retinal scans in python and provide a common interface for various processes (e.g. running various models). The idea is for the main libary to develop core, implementation-agnostic, fucntionality with various helpers/loaders/savers/views etc to deal with specific formats.
+PyeScan is a python library for streamlining the process of working with retinal scans in python and provide a common interface for various processes (e.g. running various models). The idea is for the main library to develop core, implementation-agnostic, functionality with various helpers/loaders/savers/views etc to deal with specific formats.
 
+## Installation
 
-## Installing
+Requires Python 3.12+. Install with [uv](https://docs.astral.sh/uv/):
 
-Installation is pretty standard
 ```bash
-git clone https://github.com/pontikos-lab/PyeScan.git
-cd PyeScan/
-pip install -e .
+uv pip install pyescan
 ```
 
-N.B: Dependencies aren't fully set up yet (so you may have to install more packages with `pip` as needed).
+For development:
 
-Otherwise you can just run things in the root level folder of the repo if you want to just test things out.
+```bash
+git clone https://github.com/pontikos-lab/PyeScan.git
+cd PyeScan
+uv sync
+```
 
+## Project structure
+
+```txt
+PyeScan/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml          # Lint, type-check, test on every push/PR
+│       └── release.yml     # Semantic release + publish to PyPI
+├── src/
+│   └── pyescan/
+│       ├── __init__.py
+│       ├── __main__.py
+│       ├── CELoader.py
+│       ├── annotation_loader.py
+│       ├── py.typed
+│       ├── core/           # Scan classes, metadata, visualisation
+│       ├── metrics/        # Unified metrics system
+│       └── tools/          # CLI, dataloading, dataset utilities
+├── tests/
+├── justfile
+├── pyproject.toml
+└── README.md
+```
 
 ## Example usage
 
-You can use `load_record_from_CE` to load a set of scans from a single PrivateEye/CrystalEye export 
+You can use `load_record_from_CE` to load a set of scans from a single PrivateEye/CrystalEye export
 (N.B: This is currently only tested on Heidelberg scans):
+
 ```python
 from pyescan.CELoader import load_record_from_CE
 
@@ -28,9 +54,9 @@ record_path = "/[PATH_TO_DATA]/[XXXXXXXX.pat]/[XXXXXXXX.sdb]/"
 scans = load_record_from_CE(record_path)
 ```
 
-`scans` is a list of scan instances of the various scan classes (all of which inberit from the `BaseScan`)
+`scans` is a list of scan instances of the various scan classes (all of which inherit from the `BaseScan`)
 
-Alternatively you can load from s dataframe (restricted to a single `sdb`):
+Alternatively you can load from a dataframe (restricted to a single `sdb`):
 
 ```python
 from pyescan.CELoader import load_record_from_df
@@ -52,8 +78,7 @@ The library provides support for advanced indexing and slicing of the scans, for
 
 You can also view a scan inside a jupyter notebook with `display(scan)` (or simply `scan` at the end of a cell), with support for interactive viewer for OCT.
 
-You can access information through `scan.metadata.QUERY` which can be used to get various information about this scan. Only a few functiosn are currently implemented but these should be added by adding the required property to the relevant `MetadataView` class (in this case `MetadataViewCrystalEye`). This is hierarchical so scan/image specific information can be implemented in the `MetadataView` class, and then accessed seamlessly by the scan objext.
-
+You can access information through `scan.metadata.QUERY` which can be used to get various information about this scan. Only a few functions are currently implemented but these should be added by adding the required property to the relevant `MetadataView` class (in this case `MetadataViewCrystalEye`). This is hierarchical so scan/image specific information can be implemented in the `MetadataView` class, and then accessed seamlessly by the scan object.
 
 ### Annotations
 
@@ -81,14 +106,14 @@ scan
 
 Loading can also be done using `load_annotation_from_folder` which works in the same way but first indexes the folder structure according to a specified pattern using `summarise_dataset` and uses the resulting dataframe as an intermediate.
 
-
 ### Unified Metrics system
 
-`pyescan.metrics` contains a bunch of useful metrics which can be run to get various statistics. This is built into a centralised dependency system so that any intermediate requirments are automatically computed (and cached). These used to all be set up to run directly on dataframes, howeveer this was inflexible, and not really compatible with the idea of pyescan.
+`pyescan.metrics` contains a bunch of useful metrics which can be run to get various statistics. This is built into a centralised dependency system so that any intermediate requirements are automatically computed (and cached). These used to all be set up to run directly on dataframes, however this was inflexible, and not really compatible with the idea of pyescan.
 
-The new metric system is designed to be input agnostic, or rather they all simply take in a set of inputs (that they need to do the required caluclations) and output a set of results. The clever part is that, by using a consistent internal naming scheme, the metric processor is able to work out what maps to what, which means that if we want an output which is dependent on a complex chain of inputs, the processor can find the relavant functions automatically and cache the intermediate results. This also saves overhead as it means we cna run multiple metrics at once without having to recompute intermediate values (or reload files)!
+The new metric system is designed to be input agnostic, or rather they all simply take in a set of inputs (that they need to do the required calculations) and output a set of results. The clever part is that, by using a consistent internal naming scheme, the metric processor is able to work out what maps to what, which means that if we want an output which is dependent on a complex chain of inputs, the processor can find the relevant functions automatically and cache the intermediate results. This also saves overhead as it means we can run multiple metrics at once without having to recompute intermediate values (or reload files)!
 
 Example running the new system on a dataframe:
+
 ```python
 from pyescan.metrics.helpers import run_on_dataframe
 
@@ -104,8 +129,7 @@ df_with_stats = run_on_dataframe(df, stats, col_map, auto_merge=True, named_only
 df_with_stats
 ```
 
-New metrics can also be added - there is a function wrapper provided for doing this, see `pyescan.metrics.metrics.py` for examples (documentation to follow).
-
+New metrics can also be added - there is a function wrapper provided for doing this, see `pyescan.metrics.metrics` for examples (documentation to follow).
 
 ### Image registration
 
@@ -122,8 +146,8 @@ poses = get_cleaned_poses(transforms)
 
 visualise_poses(poses)
 ```
-(N.B: Suggest running with just a limited number of images, as currently registration is done for all pairs)
 
+(N.B: Suggest running with just a limited number of images, as currently registration is done for all pairs)
 
 ### Helper functions
 
@@ -131,46 +155,92 @@ In `pyescan.tools.dataset_utils` there are two useful dataset functions `summari
 
 `summarise_dataset` simply traverses a directory structure and finds all files matching a particular file structure, and summarises them in a single pandas dataframe.
 
-For example
+For example:
+
 ```python
-summarise_dataset([ROOT_DIRECTORY], structure="{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png"
+from pyescan.tools.dataset_utils import summarise_dataset
+
+summarise_dataset([ROOT_DIRECTORY], structure="{pat}/{sdb}/{source_id}_{bscan_index:\\d+}.png")
 ```
-Will get all files that look like `{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png` (compared to the `[ROOT_DIRECTORY]`) and list them in a table with columns for `pat`, `sdb`, `source_id`, and `bscan_index` (as well as `file_path`). As you cna imagine this can be very useful for loading different types of input file structures.
 
-The other function, `get_pe_export_summary`, is similar, but traverses through a Private/CrystalEye export and dives into the metadata, producing a dataframe with a full summary of all scans/images including images (there is some data still missing, in particular the image-level metadata ~~but the plan is to add this at some point~~ is now included, but some fields are currently omitted for brevity). This is useful to make metadata summary CSVs which can be merged with other datasets (e.g. annotations/masks) as needed 
+Will get all files that look like `{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png` (compared to the `[ROOT_DIRECTORY]`) and list them in a table with columns for `pat`, `sdb`, `source_id`, and `bscan_index` (as well as `file_path`). As you can imagine this can be very useful for loading different types of input file structures.
 
-There are also a number of functions broken out as command line tools:
-`summarise_pe_export`,`summarise_dataset`, `run_function_on_csv`, `run_function_over_csv`, `narrow_to_wide`
-Use `[CMD] --help` to see how to use each one.
+The other function, `get_pe_export_summary`, is similar, but traverses through a Private/CrystalEye export and dives into the metadata, producing a dataframe with a full summary of all scans/images including images (there is some data still missing, in particular the image-level metadata is now included, but some fields are currently omitted for brevity). This is useful to make metadata summary CSVs which can be merged with other datasets (e.g. annotations/masks) as needed.
 
+### CLI tools
 
-# Explanation + Development
+There are a number of functions broken out as command line tools:
 
-Currently PyeScan is just about laying the groundwork in order to make things easier, but the idea is that we should be able to eventually port over functionality from existing code (and it should be much nicer / more streamlined to implement). Whenever you find a comon task you have to do constantly, consider adding it to the library!
+```bash
+summarise_ce_export --help
+summarise_dataset --help
+run_function_on_csv --help
+run_function_over_csv --help
+run_metric --help
+narrow_to_wide --help
+```
+
+## Architecture
 
 The core object of PyeScan is the scan object which inherits from the `BaseScan` class (though some scan objects are also compositions of other BaseScan-derived instances, as well as being a `BaseScan` in their own right).
 
 These scan classes provide a standard interface for various operations, along with various helper functionality.
 
-A big part of how this is achieved is with `MetadataView` objects which (as the name suggests) provide a 'view' onto the raw metadata, translating from the original metadata structure (by prividing various acessor properties), while also handling managing which part of the metadata the particular scan refers to.
+A big part of how this is achieved is with `MetadataView` objects which (as the name suggests) provide a 'view' onto the raw metadata, translating from the original metadata structure (by providing various accessor properties), while also handling managing which part of the metadata the particular scan refers to.
 
 Loading of actual images is currently done 'lazily' so data is only loaded when actually needed. This is intended to be largely seamless for the end user, but obviously there may be times where the user wants to 'precache' data, so `preload` and `unload` functions are included for forcing loading/unloading.
 
 Currently only loading images directly from disk is supported, but it should be possible to implement other ways of loading (e.g. directly from e2e file or whatever) fairly transparently.
 
-Annotations/masks can be loaded and added to scans. In future there will be a system to properly identify which mdoel and which feature the annotation came from/refers to, and ways of automatically searching for annotations and linking them to certain scans.
+Annotations/masks can be loaded and added to scans. In future there will be a system to properly identify which model and which feature the annotation came from/refers to, and ways of automatically searching for annotations and linking them to certain scans.
 
-During development of PyeScan it was found there was still a lot of working with dataframes, rather than loading in scans as Pyescan objects explicitly. The idea with the metric system is then to make it easy to work with either depending on the user needs.
+During development of PyeScan it was found there was still a lot of working with dataframes, rather than loading in scans as PyeScan objects explicitly. The idea with the metric system is then to make it easy to work with either depending on the user needs.
 
+## Development
 
-## TODO
+```bash
+# Quality checks (format, lint, type-check)
+just qa
 
-Main items:
-- Proper documentation (+ Linting)
-- Proper tests
-- Develop+test running metrics on PyeScan scan objects
-- ~~Type annotations/hints~~
-- ~~Rendering of annotations on enface with contours/cloropleth for thickness~~
-- ~~Annotations/masks~~ (Partially) Done!
-- requirements.txt
-- Port over functionality from PEExportBase
+# Run tests
+just test
+
+# Build
+just build
+
+# See all available commands
+just list
+```
+
+## How releases work
+
+This project uses [conventional commits](https://www.conventionalcommits.org/) and [python-semantic-release](https://python-semantic-release.readthedocs.io/):
+
+1. Develop on a feature branch with conventional commit messages (`feat:`, `fix:`, `docs:`, etc.)
+2. Open a PR and merge to `main`
+3. GitHub Actions automatically determines the next version, updates `CHANGELOG.md`, creates a tag/release, and publishes to PyPI
+
+## Template updates
+
+This project is linked to the [e2g-pypkg](https://github.com/eye2Gene/e2g-pypkg) template via [cruft](https://cruft.github.io/cruft/):
+
+```bash
+uv run cruft check    # check for template updates
+uv run cruft diff     # preview changes
+uv run cruft update   # apply updates
+```
+
+## Roadmap
+
+- [ ] Port CLI from click to typer
+- [ ] Full Ruff + Ty compliance pass
+- [ ] Proper documentation (Sphinx or MkDocs)
+- [ ] Comprehensive test suite with good coverage
+- [ ] Develop and test running metrics on PyeScan scan objects directly
+- [ ] Automatic annotation discovery and linking to scans
+- [ ] Support loading images from formats other than disk (e.g. directly from .e2e files)
+- [ ] Extract image registration tooling into a separate package
+
+## License
+
+MIT — see [LICENSE](LICENSE) for details.
