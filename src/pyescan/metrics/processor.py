@@ -1,55 +1,70 @@
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union 
 import re
+from typing import Any
 
 from .metric import Metric
 
-#TODO: Add a proper trace isntead of relying on cache
-#TODO: Move to precomputing pipeline, and then running it
+# TODO: Add a proper trace isntead of relying on cache
+# TODO: Move to precomputing pipeline, and then running it
+
 
 class MetricProcessor:
-    def __init__(self, metrics: List[Metric]):
+    def __init__(self, metrics: list[Metric]):
         self.metrics = {m.name: m for m in metrics}
-        
-    def _stat_exists(self, stat: str, entry_data: Any, cache: Dict[str,Any] = {}) -> bool:
-        if stat in entry_data:
-            return True
-        elif stat in cache.get('computed_stats',{}):
+
+    def _stat_exists(
+        self, stat: str, entry_data: Any, cache: dict[str, Any] = {}
+    ) -> bool:
+        if stat in entry_data or stat in cache.get("computed_stats", {}):
             return True
         return False
-    
-    def _get_stat(self, stat: str, entry_data: Any, cache: Dict[str,Any] = {}) -> Any:
+
+    def _get_stat(self, stat: str, entry_data: Any, cache: dict[str, Any] = {}) -> Any:
         if stat in entry_data:
             return entry_data[stat]
-        elif stat in cache['computed_stats']:
-            return cache['computed_stats'][stat]
-        raise ValueError(f"A method tried to get {stat} from entry, but it was not found!\n\n Entry:\n{entry_data}\n\nCache:\n{cache}")
+        elif stat in cache["computed_stats"]:
+            return cache["computed_stats"][stat]
+        raise ValueError(
+            f"A method tried to get {stat} from entry, but it was not found!\n\n Entry:\n{entry_data}\n\nCache:\n{cache}"
+        )
 
-    def _process_metric(self, entry_data: Any, metric: Metric, params: Dict[str,Any] = {}, cache: Optional[Dict[str,Any]] = None) -> Dict[str,Any]:
+    def _process_metric(
+        self,
+        entry_data: Any,
+        metric: Metric,
+        params: dict[str, Any] = {},
+        cache: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         cache = cache or {}
-        
+
         # Check if all returns already exist
         return_names = self._generate_return_names(metric, params)
         if all(self._stat_exists(r, entry_data, cache) for r in return_names):
-            return cache # No need to compute anything
-        
-        if 'computed_metrics' in cache:
-            cache['computed_metrics'].append((metric.name, params))
-        else:
-            cache['computed_metrics'] = [(metric.name, params)]
+            return cache  # No need to compute anything
 
-        requirements = [ self._resolve_template(template, params) for template in metric.requirements_template ]
-            
+        if "computed_metrics" in cache:
+            cache["computed_metrics"].append((metric.name, params))
+        else:
+            cache["computed_metrics"] = [(metric.name, params)]
+
+        requirements = [
+            self._resolve_template(template, params)
+            for template in metric.requirements_template
+        ]
+
         # Resolve dependencies
         inputs = {}
         for requirement in requirements:
-
             if not self._stat_exists(requirement, entry_data, cache):
                 targ_metric, targ_params = self._resolve_dependency_stat(requirement)
                 if targ_metric is None:
-                    raise ValueError(f"No metric found to compute {requirement} (required by {metric})")
+                    raise ValueError(
+                        f"No metric found to compute {requirement} (required by {metric})"
+                    )
                 else:
-                    self._process_metric(entry_data, targ_metric, targ_params, cache=cache)
-            
+                    self._process_metric(
+                        entry_data, targ_metric, targ_params, cache=cache
+                    )
+
             # Should now be available unless something went wrong
             inputs[requirement] = self._get_stat(requirement, entry_data, cache)
 
@@ -57,20 +72,22 @@ class MetricProcessor:
         if metric.input_by_name:
             results = metric.fn(**inputs, **params)
         else:
-            input_list = [ inputs[requirement] for requirement in requirements]
+            input_list = [inputs[requirement] for requirement in requirements]
             results = metric.fn(*input_list, **params)
-        
+
         # Store results
         return_dict = dict(zip(return_names, results))
-        cache['stats'] = return_dict
-        if 'computed_stats' in cache:
-            cache['computed_stats'].update(return_dict)
+        cache["stats"] = return_dict
+        if "computed_stats" in cache:
+            cache["computed_stats"].update(return_dict)
         else:
-            cache['computed_stats'] = return_dict
-            
+            cache["computed_stats"] = return_dict
+
         return cache
 
-    def _resolve_dependency_stat(self, stat: str) -> tuple[Optional[Metric], Optional[Dict[str,Any]]]:
+    def _resolve_dependency_stat(
+        self, stat: str
+    ) -> tuple[Metric | None, dict[str, Any] | None]:
         # Find metric that produces this stat
         for metric in self.metrics.values():
             for template in metric.returns_template:
@@ -78,49 +95,54 @@ class MetricProcessor:
                 if match:
                     return metric, params
         return None, None
-    
-    def get_metric_by_stat(self, stat: str) -> tuple[Optional[Metric], Optional[Dict[str,Any]]]:
+
+    def get_metric_by_stat(
+        self, stat: str
+    ) -> tuple[Metric | None, dict[str, Any] | None]:
         return self._resolve_dependency_stat(self._resolve_template(stat))
-        
-    def _generate_return_names(self, metric: Metric, params: Dict[str,Any] = {}) -> List[str]:
-        return_names = [ self._resolve_template(template, params)
-                         for template in metric.returns_template ]
-        return [ name for name in return_names if not name is None ]
-    
-    def _resolve_template(self, template: str, params: Dict[str,Any] = {}) -> str:
+
+    def _generate_return_names(
+        self, metric: Metric, params: dict[str, Any] = {}
+    ) -> list[str]:
+        return_names = [
+            self._resolve_template(template, params)
+            for template in metric.returns_template
+        ]
+        return [name for name in return_names if name is not None]
+
+    def _resolve_template(self, template: str, params: dict[str, Any] = {}) -> str:
         # Get rid of prefix
-        template = template.split(":",1)[-1]
-        
+        template = template.split(":", 1)[-1]
+
         # Replace parameters
         for key, value in params.items():
             template = template.replace(f"<{key}>", str(value))
 
         # Handle conditional parts
-        conditional = template.rsplit("?",2)[-1]
+        conditional = template.rsplit("?", 2)[-1]
         if conditional == "False":
             return None
-            
+
         return template
-    
+
     def _try_get_param_type(self, param_pattern):
         if param_pattern == "int":
-            return '\b(-?\d+)\b'
+            return "\b(-?\\d+)\b"
         elif param_pattern == "float":
-            return '(-?\d+(?:\.\d+)?)'
+            return r"(-?\d+(?:\.\d+)?)"
         elif param_pattern == "str":
-            return '([A-Za-z]+)'
+            return "([A-Za-z]+)"
         else:
             return param_pattern
-    
-    def _check_template_match(self, stat_name: str, template: str) -> Tuple[bool, Optional[Dict[str, Union[str, bool]]]]:
-        """
-        Check if a statistic name matches a template and extract parameters.
-        """
 
+    def _check_template_match(
+        self, stat_name: str, template: str
+    ) -> tuple[bool, dict[str, str | bool] | None]:
+        """Check if a statistic name matches a template and extract parameters."""
         # remove prefix of template and stat
-        stat_name = stat_name.split(":",1)[-1]
-        template = template.split(":",1)[-1]
-        
+        stat_name = stat_name.split(":", 1)[-1]
+        template = template.split(":", 1)[-1]
+
         # First create a regex pattern from the template
         regex_pattern = "^"  # Start of string
         param_names = []
@@ -131,7 +153,7 @@ class MetricProcessor:
         last_end = 0
 
         # Find all special parts (both parameters and optional sections)
-        special_parts = list(re.finditer(r'<(\w+)>|(\w+)\?<(\w+)>', template))
+        special_parts = list(re.finditer(r"<(\w+)>|(\w+)\?<(\w+)>", template))
 
         for match in special_parts:
             # Add the literal text before this match
@@ -168,7 +190,7 @@ class MetricProcessor:
                 regex_pattern += re.escape(part_data[0])
             elif part_type == "param":
                 param_name, param_pattern = part_data
-                regex_pattern += param_pattern #r"([^_]+)"
+                regex_pattern += param_pattern  # r"([^_]+)"
             elif part_type == "optional":
                 text, _ = part_data
                 if regex_pattern.endswith("_"):
@@ -176,7 +198,7 @@ class MetricProcessor:
                 else:
                     regex_pattern += f"({re.escape(text)})?"
 
-        regex_pattern += "$" # End of string
+        regex_pattern += "$"  # End of string
 
         # Try to match
         match = re.match(regex_pattern, stat_name)

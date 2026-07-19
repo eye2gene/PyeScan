@@ -1,22 +1,26 @@
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
-from typing import Any, List
 
-def _stack_arrays_with_empties(array_list: List[NDArray], default_value: float = 0) -> NDArray:
+
+def _stack_arrays_with_empties(
+    array_list: list[NDArray], default_value: float = 0
+) -> NDArray:
     # Get shape from first non-None array
     shape = next(arr.shape for arr in array_list if arr is not None)
-    
+
     # Replace None with default arrays
     processed_arrays = [
-        arr if arr is not None else np.full(shape, default_value) 
-        for arr in array_list
+        arr if arr is not None else np.full(shape, default_value) for arr in array_list
     ]
-    
+
     return np.stack(processed_arrays, axis=0)
 
-def _pad_array(data: NDArray, n: int) -> NDArray: # TODO Axis
+
+def _pad_array(data: NDArray, n: int) -> NDArray:  # TODO Axis
     m = data.shape[0]
-    
+
     if n > m:
         # Padding needed - create zeros to add
         padding = np.zeros((n - m,) + data.shape[1:], dtype=data.dtype)
@@ -25,21 +29,22 @@ def _pad_array(data: NDArray, n: int) -> NDArray: # TODO Axis
     else:
         # Truncate if n < a
         result = data[:n]
-        
+
     return result
 
-class ArrayView():
+
+class ArrayView:
     # Helper wrapper class for lists of objects which can be converted to data
-    def __init__(self, items: List[Any]):
+    def __init__(self, items: list[Any]):
         self._items_list = items
-        
-    def _items(self) -> List[Any]:
+
+    def _items(self) -> list[Any]:
         # Overwrite to return item class
         return self._items_list
-      
+
     def __len__(self):
         return len(self._items())
-    
+
     def __getitem__(self, index: int):
         if index is Ellipsis:
             return self.data
@@ -56,29 +61,29 @@ class ArrayView():
             elif isinstance(index[0], slice):
                 return self[index[0]].data[(slice(None),) + index[1:]]
             else:
-                return self[index[0]].data[index[1:]]     
+                return self[index[0]].data[index[1:]]
         elif isinstance(index, slice):
             return self.__class__(self._items()[index])
         else:
             return self._items()[index]
-    
+
     def __iter__(self):
         return iter(self._items())
-    
+
     def __str__(self):
-        return f"{self.__class__.__name__}({str(self._items())})"
-    
+        return f"{self.__class__.__name__}({self._items()!s})"
+
     def __repr__(self):
-        return f"{self.__class__.__name__}({repr(self._items())})"
-    
+        return f"{self.__class__.__name__}({self._items()!r})"
+
     @property
     def data(self) -> NDArray:
-        return _stack_arrays_with_empties([ item.data for item in self._items() ])
-    
+        return _stack_arrays_with_empties([item.data for item in self._items()])
+
     def __array__(self):
         return self.data
-    
-    def get(self, index:int, default: Any = None):
+
+    def get(self, index: int, default: Any = None):
         if index >= len(self._items()):
             return default
         else:
