@@ -4,19 +4,33 @@ PyeScan is a python library for streamlining the process of working with retinal
 
 ## Installation
 
-Requires Python 3.12+. Install with [uv](https://docs.astral.sh/uv/):
+Requires Python 3.12+.
+
+### For users
+
+Install the published package from PyPI (using [uv](https://docs.astral.sh/uv/) or pip):
 
 ```bash
-uv pip install pyescan
+uv pip install pyescan   # or: pip install pyescan
+
+# With optional extras
+uv pip install "pyescan[registration]"  # image registration (scipy)
+uv pip install "pyescan[metrics]"       # metrics with OpenCV and scikit-image
+uv pip install "pyescan[jupyter]"       # Jupyter notebook support
+uv pip install "pyescan[all]"           # everything
 ```
 
-For development:
+### For developers
+
+Clone the repo and use `uv sync` for a reproducible, lockfile-driven environment:
 
 ```bash
 git clone https://github.com/pontikos-lab/PyeScan.git
 cd PyeScan
-uv sync
+uv sync --all-extras   # installs core + all optional extras + dev tools
 ```
+
+This creates a `.venv`, installs pyescan in editable mode, and pins all dependencies to the exact versions in `uv.lock`.
 
 ## Project structure
 
@@ -169,16 +183,19 @@ The other function, `get_pe_export_summary`, is similar, but traverses through a
 
 ### CLI tools
 
-There are a number of functions broken out as command line tools:
+All CLI tools are available under the unified `pyescan` command:
 
 ```bash
-summarise_ce_export --help
-summarise_dataset --help
-run_function_on_csv --help
-run_function_over_csv --help
-run_metric --help
-narrow_to_wide --help
+pyescan --help
+pyescan summarise-export --help
+pyescan summarise-dataset --help
+pyescan run-function-on-csv --help
+pyescan run-function-over-csv --help
+pyescan run-metric --help
+pyescan narrow-to-wide --help
 ```
+
+You can also run via `python -m pyescan`.
 
 ## Architecture
 
@@ -232,7 +249,6 @@ uv run cruft update   # apply updates
 
 ## Roadmap
 
-- [ ] Port CLI from click to typer
 - [ ] Full Ruff + Ty compliance pass
 - [ ] Proper documentation (Sphinx or MkDocs)
 - [ ] Comprehensive test suite with good coverage
