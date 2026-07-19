@@ -1,0 +1,156 @@
+[project]
+name = "pyescan"
+version = "0.0.2"
+description = "A Python library for working with retinal scans exported by Private Eye / Crystal Eye"
+readme = "README.md"
+requires-python = ">=3.12,<4.0"
+authors = [{ name = "William Woof", email = "awwoof@hotmail.com" }]
+maintainers = [{ name = "William Woof", email = "awwoof@hotmail.com" }]
+license = "MIT"
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Software Development :: Libraries",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Typing :: Typed",
+]
+dependencies = [
+  "numpy",
+  "pandas",
+  "matplotlib",
+  "rich",
+  "tqdm",
+  "typer",
+]
+
+[project.scripts]
+summarise_ce_export = "pyescan.tools.cli:get_ce_export_summary_cli"
+summarise_dataset = "pyescan.tools.cli:summarise_dataset_cli"
+run_function_on_csv = "pyescan.tools.cli:run_function_on_csv_cli"
+run_function_over_csv = "pyescan.tools.cli:run_function_over_csv_cli"
+run_metric = "pyescan.tools.cli:run_metric_csv_cli"
+narrow_to_wide = "pyescan.tools.cli:narrow_to_wide_cli"
+
+[dependency-groups]
+dev = [
+  { include-group = "lint" },
+  { include-group = "test" },
+  { include-group = "tools" },
+]
+lint = [
+  "licensecheck",
+  "ruff",
+]
+test = [
+  "ipdb",
+  "pdbpp",
+  "pytest",
+  "pytest-cov",
+  "pytest-xdist",
+  "ty",
+]
+tools = ["cruft", "rust-just"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.coverage.report]
+omit = ["__main__.py"]
+fail_under = 50
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "if typing.TYPE_CHECKING:",
+  "@overload",
+  "@typing.overload",
+  "class .*\\bProtocol\\):",
+  "@(abc\\.)?abstractmethod",
+  "raise NotImplementedError",
+  "\\.\\.\\.",
+  "no cov",
+  "if __name__ == .__main__.:",
+]
+
+[tool.hatch.build.targets.sdist]
+include = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pyescan"]
+
+[tool.pytest]
+addopts = [
+  "--cov-branch",
+  "--cov-report=term-missing:skip-covered",
+  "--cov-report=xml",
+  "--cov=src/",
+  "--cov=tests/",
+  "--dist=loadscope",
+  "--durations=5",
+  "-n",
+  "0",
+]
+filterwarnings = []
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+  "ANN",  # check typings
+  "B",    # flake8-bugbear
+  "D",    # check docstrings
+  "E",    # pycodestyle errors
+  "F",    # Pyflakes
+  "I",    # isort
+  "RUF",  # Ruff-specific rules
+  "SIM",  # Common simplification rules
+  "TC",   # Enforce importing certain types in a TYPE_CHECKING block
+  "TD",   # Be diligent with TODO comments
+  "TID",  # Some good import practices
+  "UP",   # Warn if certain things can changed due to newer Python versions
+  "W",    # PyCodeStyle warnings
+  "S",    # security issues
+]
+ignore = [
+  "E501",  # line length (handled by ruff format for code)
+  "B008",  # function call in defaults (standard typer pattern)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "S"]
+"__main__.py" = ["D100"]
+"__init__.py" = ["D104"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ty]
+
+[tool.ty.environment]
+python = ".venv"
+
+[tool.ty.src]
+include = ["src"]
+
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.uv]
+exclude-newer = "7 days"
+package = true
+default-groups = ["dev"]
+cache-keys = [
+  { file = "pyproject.toml" },
+  { git = { commit = true, tags = true } },
+]
+
+[tool.semantic_release]
+version_toml = ["pyproject.toml:project.version"]
+branch = "main"
+commit_message = "chore(release): {version}"
