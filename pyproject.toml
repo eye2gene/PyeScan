@@ -17,6 +17,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
+  "Pillow",
   "matplotlib",
   "numpy",
   "pandas",
@@ -26,12 +27,24 @@ dependencies = [
 ]
 
 [project.scripts]
-narrow_to_wide = "pyescan.tools.cli:narrow_to_wide_cli"
-run_function_on_csv = "pyescan.tools.cli:run_function_on_csv_cli"
-run_function_over_csv = "pyescan.tools.cli:run_function_over_csv_cli"
-run_metric = "pyescan.tools.cli:run_metric_csv_cli"
-summarise_ce_export = "pyescan.tools.cli:get_ce_export_summary_cli"
-summarise_dataset = "pyescan.tools.cli:summarise_dataset_cli"
+pyescan = "pyescan.tools.cli:app"
+
+[project.optional-dependencies]
+all = [
+  "pyescan[jupyter,registration,metrics]",
+]
+jupyter = [
+  "ipython",
+  "ipywidgets",
+]
+metrics = [
+  "opencv-python",
+  "scikit-image",
+  "scipy",
+]
+registration = [
+  "scipy",
+]
 
 [dependency-groups]
 dev = [

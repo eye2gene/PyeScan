@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
+from functools import cached_property
 
-from cached_property import cached_property
 from numpy.typing import NDArray
 
 from .annotation import Annotation
