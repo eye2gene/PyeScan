@@ -17,7 +17,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "Pillow",
+  "Pillow>=12",
   "matplotlib",
   "numpy",
   "pandas",
@@ -43,6 +43,7 @@ metrics = [
   "scipy",
 ]
 registration = [
+  "retinalysis-registration",
   "scipy",
 ]
 
@@ -59,7 +60,7 @@ lint = [
 test = [
   "ipdb",
   "pdbpp",
-  "pytest",
+  "pytest>=9",
   "pytest-cov",
   "pytest-xdist",
   "ty",
@@ -162,10 +163,8 @@ ignore = [
 "tests/*" = ["D", "S"]  # ["UP", "RUF", "I", "D", "E501"]
 "__main__.py" = ["D100"]
 "__init__.py" = ["D104"]
-"src/pyescan/tools/dataloading.py" = [
-  "F821"
-]  # legacy undefined names from incomplete refactor
-"src/pyescan/core/annotation.py" = ["F821"]  # forward reference to BaseScan
+"src/pyescan/tools/dataloading.py" = ["F821"]
+"src/pyescan/core/annotation.py" = ["F821"]
 "src/pyescan/metrics/__init__.py" = [
   "F403"
 ]  # star import is intentional public API
