@@ -44,7 +44,7 @@ up *ARGS:
     @echo "Upgrading with {{ ARGS }}"
     uv lock --exclude-newer "7 days" -U {{ ARGS }}
     uv audit
-    uv sync --exclude-newer "7 days"
+    uv sync --exclude-newer "7 days" --all-extras
     just build
 
 # Run all the tests, but allow for arguments to be passed
