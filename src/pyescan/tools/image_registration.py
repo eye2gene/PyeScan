@@ -190,7 +190,8 @@ def get_poses(transforms, node_idxs=None, weights=None):
         weights = {k: 1.0 for k in transforms}
 
     def edge_weight(u, v):
-        return weights[u, v] if (u, v) in weights else weights[v, u]
+        w = weights[u, v] if (u, v) in weights else weights[v, u]
+        return float("inf") if w is None else w
 
     poses = dict()
     for start_node in node_idxs:
@@ -365,12 +366,15 @@ def get_cleaned_poses(
         transforms, node_idxs, weights=edge_scores
     )  # Use original uncleaned
 
+    # --- Cycle-based edge classification (independent of optimization) ---
+    outlier_edges = {
+        e for e, s in edge_scores.items() if s is not None and s > threshold
+    }
+    untestable_edges = [e for e, s in edge_scores.items() if s is None]
+    final_edge_errors = {}
+
     # --- Pose graph & optimization ---
     if optimize_poses:
-        outlier_edges = {
-            e for e, s in edge_scores.items() if s is not None and s > threshold
-        }
-        untestable_edges = [e for e, s in edge_scores.items() if s is None]
         transforms_clean = {
             k: v for k, v in transforms.items() if k not in outlier_edges
         }
@@ -394,7 +398,6 @@ def get_cleaned_poses(
         optimized_poses = _optimize_poses(poses, transforms_clean)
 
         # Post-optimization residual per edge
-        final_edge_errors = {}
         for (src, tgt), M in transforms_clean.items():
             M_pred = optimized_poses[tgt] @ np.linalg.inv(optimized_poses[src])
             final_edge_errors[src, tgt] = error_fn(M_pred @ np.linalg.inv(M))
