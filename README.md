@@ -25,7 +25,7 @@ uv pip install "pyescan[all]"           # everything
 Clone the repo and use `uv sync` for a reproducible, lockfile-driven environment:
 
 ```bash
-git clone https://github.com/pontikos-lab/PyeScan.git
+git clone https://github.com/eye2gene/PyeScan.git
 cd PyeScan
 uv sync --all-extras   # installs core + all optional extras + dev tools
 ```
