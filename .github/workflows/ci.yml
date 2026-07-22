@@ -15,4 +15,3 @@ on:
 jobs:
   ci:
     uses: eye2Gene/e2g-pypkg/.github/workflows/python-ci.yml@main
-
