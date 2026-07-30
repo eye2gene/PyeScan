@@ -108,11 +108,11 @@ class MetadataView:
     
     @property
     def scans(self) -> List["MetadataView"]:
-        return [ self.get_view({'scan_number': i }) for i in range(self.n_scans) ]
+        return [ self.get_view({'scan_number': i }) for i in range(int(self.n_scans)) ]
         
     @property
     def images(self) -> List["MetadataView"]:
-        return [ self.get_view({'scan_number': self.scan_number, 'image_number': i }) for i in range(self.n_images) ]
+        return [ self.get_view({'scan_number': self.scan_number, 'image_number': i }) for i in range(int(self.n_images)) ]
     
     @property
     def bscans(self) -> List["MetadataView"]:

@@ -12,7 +12,6 @@ from .scan_enface import EnfaceScan
 from .utils import ArrayView, _pad_array
 from .visualisation import (
     generate_distinct_colors,
-    oct_display_widget,
     overlay_masks,
     overlay_rgba_images,
     render_volume_data,
@@ -208,13 +207,25 @@ class OCTScan(BaseScan):
         return result_image
         
     def _build_display_widget(self, enface_contours=True, enface_heatmap=True):
+        from .visualisation import image_array_display_widget, oct_display_widget
+
         if self.annotations:
             annotated_images = list()
             for i, _ in enumerate(self.images):
                 annotated_images.append(self._annotated_bscan(i))
-            enface_image = self._annotated_enface(contours=enface_contours, heatmap=enface_heatmap)
+            enface_image = self._annotated_enface(contours=enface_contours, heatmap=enface_heatmap) if self._enface else None
         else:
             annotated_images = self.images
-            enface_image = self.enface.image
+            enface_image = self.enface.image if self._enface else None
 
-        return oct_display_widget(annotated_images, enface_image, self.get_bscan_enface_locations(), width=640, height=320, enface_size=320)
+        # Get bscan locations if available
+        try:
+            bscan_locations = self.get_bscan_enface_locations()
+        except (AttributeError, TypeError):
+            bscan_locations = None
+
+        # Fall back to simple volume viewer if no enface or positions
+        if enface_image is None or bscan_locations is None:
+            return image_array_display_widget(annotated_images, width=640, height=320)
+
+        return oct_display_widget(annotated_images, enface_image, bscan_locations, width=640, height=320, enface_size=320)

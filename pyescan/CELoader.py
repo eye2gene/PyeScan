@@ -242,7 +242,14 @@ class CrystalEyeParserCSV(MetadataParserCSV):
             scan_number = metadata_record.raw.source_id.unique()[view_info["scan_number"]]  # noqa: F841
             df = df.query("source_id == @scan_number")
         if "image_number" in view_info:
-            image_number = view_info["image_number"]  # noqa: F841
+            image_number = view_info["image_number"]
+            # Coerce to match column dtype (DataFrame may have strings from CSV)
+            if "bscan_index" in df.columns and len(df) > 0:
+                col_dtype = df["bscan_index"].dtype
+                if col_dtype == object:  # string column
+                    image_number = str(image_number)  # noqa: F841
+                else:
+                    image_number = col_dtype.type(image_number)  # noqa: F841
             df = df.query("bscan_index == @image_number")
         return df
     
