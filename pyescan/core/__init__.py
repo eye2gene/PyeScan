@@ -8,7 +8,7 @@ from .scan_enface import EnfaceScan, FAFScan, IRScan, ColorFundusScan
 from .annotation import Annotation, AnnotationEnface, AnnotationOCT, MaskImage, MaskVolume
 from .image import BaseImage, LazyImage, ImageVolume
 from .metadata import MetadataRecord, MetadataView, MetadataParser
-from .scan_building import build_from_metadata
+from .scan_building import build_from_metadata, ScanBuildError
 
 __all__ = [
     "BaseScan",
@@ -32,4 +32,5 @@ __all__ = [
     "MetadataView",
     "MetadataParser",
     "build_from_metadata",
+    "ScanBuildError",
 ]
