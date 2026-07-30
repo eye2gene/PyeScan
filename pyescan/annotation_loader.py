@@ -225,10 +225,16 @@ def load_annotation_from_df(df, file_path_col='file_path', index_col='bscan_inde
         annotations_dict = {}
         for feature, df_feat in df.groupby(feature_col):
             ann = _build_annotation_from_dataframe_base(df_feat, file_path_col, index_col)
+            ann.feature_name = feature
+            # Set source_id from identity_col or infer from data
+            if identity_col and identity_col in df_feat.columns:
+                ann.source_id = str(df_feat[identity_col].iloc[0])
             annotations_dict[feature] = ann
         return annotations_dict
     else:
         ann = _build_annotation_from_dataframe_base(df, file_path_col, index_col)
+        if identity_col and identity_col in df.columns:
+            ann.source_id = str(df[identity_col].iloc[0])
         return ann
 
 

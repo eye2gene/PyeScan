@@ -166,6 +166,109 @@ class OCTScan(BaseScan):
 
         #return warped[::-1,...] # reverse due to different indexing of y
         return warped
+
+    def annotation_to_enface(self, annotation) -> "Annotation":
+        """
+        Project an OCT volume annotation to enface space.
+
+        Takes the annotation volume, projects it through the scan geometry,
+        and returns a new single-slice Annotation in enface coordinates.
+        The projection uses maximum intensity along the depth axis to produce
+        a 2D enface presence map.
+
+        Parameters
+        ----------
+        annotation : Annotation
+            An OCT volume annotation (multiple slices).
+
+        Returns
+        -------
+        Annotation
+            A new enface annotation with a single projected raster slice.
+        """
+        from .annotation import Annotation, AnnotationSlice
+
+        vol_data = annotation.data
+        if vol_data.ndim == 2:
+            # Already enface-like, just wrap it
+            return Annotation(
+                slices=AnnotationSlice(raster=vol_data),
+                feature_name=annotation.feature_name,
+                source_id=annotation.source_id,
+                model_info=annotation.model_info,
+                color=annotation.color,
+            )
+
+        # Collapse depth axis: for each bscan, take any() along height axis
+        # to get a 2D (n_bscans x width) presence map, then warp to enface
+        presence = vol_data.any(axis=1).astype(np.float64)  # shape: (n_bscans, width)
+
+        # Project the (n_bscans x width) map to enface coordinates
+        projected = self.transform_to_enface(presence)
+        projected_mask = (projected * 255).astype(np.uint8)
+
+        return Annotation(
+            slices=AnnotationSlice(raster=projected_mask),
+            feature_name=annotation.feature_name,
+            source_id=annotation.source_id,
+            model_info=annotation.model_info,
+            color=annotation.color,
+        )
+
+    def annotation_to_bscans(self, annotation) -> "Annotation":
+        """
+        Project an enface annotation to B-scan space.
+
+        Takes a single-slice (enface) annotation and projects it onto each
+        B-scan, producing a verticalised volume (binary presence per A-scan).
+
+        Parameters
+        ----------
+        annotation : Annotation
+            An enface annotation (single slice with 2D raster).
+
+        Returns
+        -------
+        Annotation
+            A new volume annotation with one slice per B-scan.
+        """
+        from .annotation import Annotation, AnnotationSlice, AnnotationVolume
+
+        enface_mask = annotation.data
+        if enface_mask.ndim != 2:
+            raise ValueError(
+                f"annotation_to_bscans expects a 2D enface annotation, "
+                f"got shape {enface_mask.shape}"
+            )
+
+        enface_mask_binary = enface_mask > (annotation.threshold * 255 if enface_mask.max() > 1 else annotation.threshold)
+        eH, eW = enface_mask_binary.shape[:2]
+
+        w = self.bscans[0].image.width
+        h = self.bscans[0].image.height
+        nrows = len(self)
+
+        # Build the enface projection map for all bscan points
+        pts = np.indices((nrows, w)).transpose(1, 2, 0).reshape((-1, 2))
+        proj_pts = self.project_to_enface(pts).reshape((nrows, w, 2))
+
+        slices = []
+        for bscan_index in range(nrows):
+            bscan_mask = np.zeros((h, w), dtype=np.uint8)
+            for j, (enface_x, enface_y) in enumerate(proj_pts[bscan_index]):
+                yi = max(0, min(int(round(enface_y)), eH - 1))
+                xi = max(0, min(int(round(enface_x)), eW - 1))
+                if enface_mask_binary[yi, xi]:
+                    bscan_mask[:, j] = 255
+            slices.append(AnnotationSlice(raster=bscan_mask))
+
+        return Annotation(
+            slices=AnnotationVolume(slices),
+            feature_name=annotation.feature_name,
+            source_id=annotation.source_id,
+            model_info=annotation.model_info,
+            color=annotation.color,
+        )
         
     def _annotated_bscan(self, bscan_index: int, features=None) -> NDArray:
         image = self.images[bscan_index]

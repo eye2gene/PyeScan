@@ -56,9 +56,14 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
         raise NotImplementedError()
         
     def add_annotation(self, feature_name: str, annotation: Annotation, color=None) -> None:
-        annotation._scan = self
+        annotation.feature_name = feature_name
         if color is not None:
-            annotation._color = color
+            annotation.color = color
+        if hasattr(self, 'source_id'):
+            try:
+                annotation.source_id = annotation.source_id or self.source_id
+            except Exception:
+                pass
         self._annotations[feature_name] = annotation
         
     def add_annotations(self, annotation_dict: Dict[str,Annotation]) -> None:

@@ -2,7 +2,10 @@
 PyeScan core module - scan classes, images, metadata, and annotations.
 """
 
-from .annotation import Annotation, AnnotationEnface, AnnotationOCT, MaskImage, MaskVolume
+from .annotation import (
+    Annotation, AnnotationSlice, AnnotationVolume,
+    AnnotationEnface, AnnotationOCT, MaskImage, MaskVolume, ModelInfo,
+)
 from .image import BaseImage, ImageVolume, LazyImage
 from .metadata import MetadataParser, MetadataRecord, MetadataView
 from .scan import BaseScan, SingleImageScan
@@ -14,6 +17,8 @@ __all__ = [
     "Annotation",
     "AnnotationEnface",
     "AnnotationOCT",
+    "AnnotationSlice",
+    "AnnotationVolume",
     "BScan",
     "BScanArray",
     "BaseImage",
@@ -29,6 +34,7 @@ __all__ = [
     "MetadataParser",
     "MetadataRecord",
     "MetadataView",
+    "ModelInfo",
     "OCTScan",
     "ScanBuildError",
     "SingleImageScan",
