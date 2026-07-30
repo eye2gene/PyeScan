@@ -1,5 +1,7 @@
-import click
 import os
+
+import click
+
 
 class ClickKeyValueType(click.ParamType):
     name = "key=value"
@@ -59,8 +61,8 @@ def get_ce_export_summary_cli(export_location, output_csv, file_structure="pat/s
 @click.command()
 @click.argument('target_location', type=click.Path(exists=True), required=True)
 @click.argument('output_csv', type=click.Path(), required=True)
-@click.option('--format', type=str, default='{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png',
-              help='File structure gias list of names separated by / (default: {pat}/{sdb}/{source_id}_{bscan_index:\d+}.png).')
+@click.option('--format', type=str, default=r'{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png',
+              help=r'File structure gias list of names separated by / (default: {pat}/{sdb}/{source_id}_{bscan_index:\d+}.png).')
 def summarise_dataset_cli(target_location, output_csv, format):
     from .dataset_utils import summarise_dataset
     df = summarise_dataset(target_location, structure=format)
@@ -157,6 +159,7 @@ def run_function_over_csv_cli(csv_file, function, output_csv=None, column_headin
     if len(column_headings) == 1: column_headings = column_headings[0]
         
     import pandas as pd
+
     from .dataset_utils import run_function_on_dataframe
     
     # Load CSV into a DataFrame
@@ -195,6 +198,7 @@ def run_metric_csv_cli(csv_file, stats, output_csv=None, mapping={}, suffix=None
             return
 
     import pandas as pd
+
     from ..metrics.helpers import run_on_dataframe
     
     # Load CSV into a DataFrame
@@ -224,6 +228,7 @@ def narrow_to_wide_cli(csv_file, output_csv, pivot_col, identifier_cols, flatten
     """
     
     import pandas as pd
+
     from .dataset_utils import detect_pivot_cols
     
     # Load CSV into a DataFrame

@@ -1,9 +1,8 @@
-from pyescan.core.image import LazyImage
-
-from pyescan.core.scan_enface import IRScan, FAFScan
-from pyescan.core.scan_oct import BScan, BScanArray, OCTScan
-
 import logging
+
+from pyescan.core.image import LazyImage
+from pyescan.core.scan_enface import FAFScan, IRScan
+from pyescan.core.scan_oct import BScan, BScanArray, OCTScan
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +197,7 @@ def build_from_metadata(metadata):
                 "\n".join(f"    • {e}" for e in build_errors)
             )
         raise ValueError(
-            f"No scans could be built from the metadata.\n" +
+            "No scans could be built from the metadata.\n" +
             "\n".join(error_details)
         )
 

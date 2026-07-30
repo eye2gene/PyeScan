@@ -1,11 +1,13 @@
 from abc import ABCMeta, abstractmethod
 from functools import cached_property
+from typing import Dict, Optional
+
 from numpy.typing import NDArray
-from typing import Any, Dict, List, Union, Optional
 
 from .annotation import Annotation
 from .image import BaseImage
 from .metadata import MetadataView
+
 
 class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclass itself
     def __init__(self,
@@ -55,7 +57,7 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
         
     def add_annotation(self, feature_name: str, annotation: Annotation, color=None) -> None:
         annotation._scan = self
-        if not (color is None):
+        if color is not None:
             annotation._color = color
         self._annotations[feature_name] = annotation
         

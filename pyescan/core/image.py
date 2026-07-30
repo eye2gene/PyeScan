@@ -1,12 +1,13 @@
-from functools import cached_property
+from typing import Any, List, Optional
+
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image as PILImage
-from typing import Any, List, Optional
 
 from .utils import ArrayView
 
-class BaseImage():
+
+class BaseImage:
     pass #TODO make this an ABC
 
 class LazyImage(BaseImage):
@@ -75,7 +76,7 @@ class ImageVolume(ArrayView):
     def __init__(self, images: Optional[List[BaseImage]] = None,
                  file_paths: Optional[List[str]] = None,
                  mode:str = None):
-        if not images is None:
+        if images is not None:
             self._images = images
         else:
             self._images = [ LazyImage(file_path, mode) for file_path in file_paths ]

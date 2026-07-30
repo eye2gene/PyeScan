@@ -1,8 +1,8 @@
-from pyescan.core.metadata import MetadataRecord, MetadataParserJSON, MetadataParserCSV
-from pyescan.core.scan_building import build_from_metadata
-
 import logging
 import os
+
+from pyescan.core.metadata import MetadataParserCSV, MetadataParserJSON, MetadataRecord
+from pyescan.core.scan_building import build_from_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -212,7 +212,7 @@ class CrystalEyeParser(MetadataParserJSON):
         bscan_index = view_info['image_number'] if 'OCT' in modality else 0
         source_id = self.get_value('source_id', metadata_record, view_info)
         
-        file_name = "{}_{}.png".format(source_id, bscan_index)
+        file_name = f"{source_id}_{bscan_index}.png"
         return os.path.join(metadata_record.location, file_name)
 
     
@@ -230,18 +230,19 @@ class CrystalEyeParserCSV(MetadataParserCSV):
         "bscan_end_y": "bscan_location_end_y",
     }
     
-    def __init__(self, column_headings={}):
+    def __init__(self, column_headings=None):
         self._col_map = self._base_col_map.copy()
-        self._col_map.update(column_headings)
+        if column_headings:
+            self._col_map.update(column_headings)
         self._overrides = { "n_scans": self.n_scans }
         
     def _get_records_subset(self, metadata_record, view_info):
         df = metadata_record.raw
         if "scan_number" in view_info:
-            scan_number = metadata_record.raw.source_id.unique()[view_info["scan_number"]]
+            scan_number = metadata_record.raw.source_id.unique()[view_info["scan_number"]]  # noqa: F841
             df = df.query("source_id == @scan_number")
         if "image_number" in view_info:
-            image_number = view_info["image_number"]
+            image_number = view_info["image_number"]  # noqa: F841
             df = df.query("bscan_index == @image_number")
         return df
     
@@ -263,7 +264,7 @@ def load_record_from_json_CE(metadata_file_path, format=None):
         )
 
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path) as f:
             json_data = json.load(f)
     except json.JSONDecodeError as e:
         raise ValueError(

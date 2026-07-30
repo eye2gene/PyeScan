@@ -1,10 +1,10 @@
-from abc import ABCMeta, abstractmethod
-from functools import cached_property
-from collections import defaultdict
-from typing import Any, Dict, List, Union, Optional
 import os
+from abc import ABCMeta, abstractmethod
+from collections import defaultdict
+from typing import Any, Dict, List, Optional, Union
 
-class MetadataRecord():
+
+class MetadataRecord:
     """
     Separate holder object for metadata information
     Good to keep separate to avoid data-deduplication
@@ -44,7 +44,7 @@ class MetadataParser(metaclass=ABCMeta):
         return NotImplementedError() 
 
     
-class MetadataView():
+class MetadataView:
     def __init__(self,
                  record: MetadataRecord,
                  view_info: Optional[Dict[str, Any]] = None,

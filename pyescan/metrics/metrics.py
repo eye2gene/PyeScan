@@ -1,15 +1,17 @@
+from typing import Tuple
+
 import numpy as np
 import PIL.Image
-from typing import Any, Dict, List, Optional, Tuple
 
-from .registry import pyescan_metric, Meta, MaskStat, ImgStat, Spec, Pred
+from .registry import ImgStat, MaskStat, Meta, Pred, Spec, pyescan_metric
+
 
 @pyescan_metric()
 def get_mask(file_path_mask: str) -> Tuple[Spec[np.array]]:
     try:
         mask = np.array(PIL.Image.open(file_path_mask).convert("L")) > 0
         return mask,
-    except FileNotFoundError as e: 
+    except FileNotFoundError: 
         return None,
 
 
@@ -18,7 +20,7 @@ def get_image(file_path_scan: str) -> Tuple[Spec[np.array]]:
     try:
         image = np.array(PIL.Image.open(file_path_scan).convert("L"))
         return image,
-    except FileNotFoundError as e: 
+    except FileNotFoundError: 
         return None,
 
 
@@ -49,6 +51,14 @@ def get_mask_pixel_counts(mask: Spec[np.array]) -> Tuple[MaskStat[float], MaskSt
     mask_columns_count = mask.any(axis=0).sum()
     mask_rows_count = mask.any(axis=1).sum()
     return mask_pixel_count, mask_columns_count, mask_rows_count
+
+
+@pyescan_metric()
+def get_underlying_intensity(image: Spec[np.array], mask: Spec[np.array]) -> Tuple[MaskStat[float], MaskStat[float]]:
+    masked_values = image[mask.astype(bool)]
+    image_masked_intensity_mean = masked_values.mean()
+    image_masked_intensity_std = masked_values.std()
+    return image_masked_intensity_mean, image_masked_intensity_std
 
 
 @pyescan_metric()

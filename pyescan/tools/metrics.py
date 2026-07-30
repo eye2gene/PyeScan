@@ -1,6 +1,6 @@
 def _load_image_as_mask(image_path):
-    from PIL import Image
     import numpy as np
+    from PIL import Image
     try:
         img = np.array(Image.open(image_path).convert("L")) > 0
         return img
@@ -268,10 +268,10 @@ def _get_quadrant_masks_oct(row):
     return masks
 
 def get_pixel_count_at_distance(row, radius, hextent_only=False, by_quadrant=False, mask='NotProvided'):
+    import numbers
+
     import numpy as np
     from PIL import Image
-    
-    import numbers
     return_single_value = False
     if isinstance(radius, numbers.Number):
         radius = [ radius ]

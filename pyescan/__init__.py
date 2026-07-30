@@ -5,21 +5,21 @@ Provides a common interface for loading, viewing, and analysing
 retinal imaging data (OCT, FAF, IR, Color Fundus).
 """
 
+from .annotation_loader import (
+    load_annotation_from_df,
+    load_annotation_from_folder,
+)
 from .CELoader import (
     load_record_from_CE,
     load_record_from_df,
     load_records_from_df,
 )
-from .annotation_loader import (
-    load_annotation_from_df,
-    load_annotation_from_folder,
-)
-from .core.scan import BaseScan, SingleImageScan
-from .core.scan_oct import OCTScan, BScan, BScanArray
-from .core.scan_enface import EnfaceScan, FAFScan, IRScan, ColorFundusScan
 from .core.annotation import Annotation, AnnotationEnface, AnnotationOCT
-from .core.image import LazyImage, ImageVolume
+from .core.image import ImageVolume, LazyImage
 from .core.metadata import MetadataRecord, MetadataView
+from .core.scan import BaseScan, SingleImageScan
+from .core.scan_enface import ColorFundusScan, EnfaceScan, FAFScan, IRScan
+from .core.scan_oct import BScan, BScanArray, OCTScan
 
 __all__ = [
     # Loading

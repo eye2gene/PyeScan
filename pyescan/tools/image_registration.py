@@ -1,19 +1,16 @@
-from scipy.optimize import least_squares
-from scipy.sparse import lil_matrix
-import numpy as np
-
-import os
-
-from collections import deque, defaultdict
-from functools import cache
 import heapq
+import os
+from collections import defaultdict, deque
+from functools import cache
 from itertools import combinations
 
-from PIL import Image as PILImage
 import ipywidgets as widgets
-from IPython.display import display
 import matplotlib.pyplot as plt
-
+import numpy as np
+from IPython.display import display
+from PIL import Image as PILImage
+from scipy.optimize import least_squares
+from scipy.sparse import lil_matrix
 from tqdm import tqdm
 
 

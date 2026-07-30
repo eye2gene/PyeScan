@@ -1,7 +1,7 @@
  #TODO: Remove dependence on cv2 by using PIL Image transform
-from PIL import Image
-import numpy as np
 import cv2
+import numpy as np
+from PIL import Image
 
 # this is the resulotion the model will work with 
 # default axial resolution for Heidelberg

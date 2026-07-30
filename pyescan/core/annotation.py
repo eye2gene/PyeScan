@@ -1,21 +1,21 @@
 from abc import ABCMeta, abstractmethod
-from functools import cached_property
-import math
+from typing import List, Optional
+
 from numpy.typing import NDArray
 from PIL import Image as PILImage
-from typing import Any, List, Optional
 
-from .image import LazyImage, ImageVolume
+from .image import ImageVolume, LazyImage
 from .utils import ArrayView
 
-class ModelInfo():
+
+class ModelInfo:
     """
     Datastructure for holding information about a model
     """
     def __init__(self, name: str = None):
         self.name:str = name
     
-class FeatureInfo():
+class FeatureInfo:
     """
     Datastructure for holding information about a model 
     """
@@ -119,7 +119,7 @@ class AnnotationOCT(Annotation):
         return self._masks._repr_png_()
     
     def _ipython_display_(self) -> None:
-        from IPython.display import display, Image
+        from IPython.display import display
         display(self._build_display_widget())
         
     @property

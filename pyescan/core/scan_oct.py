@@ -1,15 +1,22 @@
-from IPython.display import display
+from typing import List
+
 import numpy as np
+from IPython.display import display
 from numpy.typing import NDArray
 from PIL import Image as PILImage
 from skimage.transform import ProjectiveTransform, warp
-from typing import Any, Dict, List, Optional, Union
 
 from .image import BaseImage, ImageVolume
 from .scan import BaseScan, SingleImageScan
 from .scan_enface import EnfaceScan
 from .utils import ArrayView, _pad_array
-from .visualisation import generate_distinct_colors, oct_display_widget, overlay_rgba_images, overlay_masks, render_volume_data
+from .visualisation import (
+    generate_distinct_colors,
+    oct_display_widget,
+    overlay_masks,
+    overlay_rgba_images,
+    render_volume_data,
+)
 
 
 class BScan(SingleImageScan):
@@ -201,7 +208,6 @@ class OCTScan(BaseScan):
         return result_image
         
     def _build_display_widget(self, enface_contours=True, enface_heatmap=True):
-        from .visualisation import oct_display_widget
         if self.annotations:
             annotated_images = list()
             for i, _ in enumerate(self.images):

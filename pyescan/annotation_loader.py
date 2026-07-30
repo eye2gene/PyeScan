@@ -1,9 +1,10 @@
-from .core.annotation import MaskImage, MaskVolume, AnnotationOCT
-from .tools.dataset_utils import summarise_dataset
-
 import logging
+
 import numpy as np
 from PIL import Image as PILImage
+
+from .core.annotation import AnnotationOCT, MaskImage, MaskVolume
+from .tools.dataset_utils import summarise_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ def _validate_annotation_dataframe(df, file_path_col='file_path', index_col='bsc
 
 def _build_annotation_from_file_paths(file_paths):  # TODO - move to annotation constructor
     masks = list()
-    for i, file_path in enumerate(file_paths):
+    for file_path in file_paths:
         mask_img = MaskImage(file_path=file_path, mode='L')
         masks.append(mask_img)
     mask_array = MaskVolume(masks)
@@ -121,7 +122,7 @@ def _build_annotation_from_file_paths(file_paths):  # TODO - move to annotation 
 
 def _build_annotation_from_array(data):  # TODO - move to annotation constructor
     masks = list()
-    for i, bscan_data in enumerate(data):
+    for bscan_data in data:
         pil_img = PILImage.fromarray(bscan_data.astype(np.uint8))
         mask_img = MaskImage(raw_image=pil_img, mode='L')
         masks.append(mask_img)
@@ -231,7 +232,7 @@ def load_annotation_from_df(df, file_path_col='file_path', index_col='bscan_inde
         return ann
 
 
-def load_annotation_from_folder(annotations_folder, folder_structure="{feature}/{source_id}_{bscan_index:\d+}.png",
+def load_annotation_from_folder(annotations_folder, folder_structure=r"{feature}/{source_id}_{bscan_index:\d+}.png",
                                 group_by=None, identity_col=None, validate=True,
                                 allow_gaps=False):
     """

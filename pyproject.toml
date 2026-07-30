@@ -91,8 +91,14 @@ ignore = [
     "W292",   # no newline at end of file
     "W293",   # blank line with whitespace (legacy)
     "B905",   # zip without strict (py3.10+)
+    "SIM102", # collapsible-if (readability preference, nested ifs can be clearer)
+    "SIM103", # needless-bool (explicit return True/False can be clearer)
     "SIM108", # ternary operator (readability preference)
+    "SIM116", # dict-instead-of-if-else (readability preference)
+    "RUF005", # collection-literal-concatenation (stylistic, existing pattern)
     "RUF012", # mutable class variables (common in this codebase)
+    "RUF013", # implicit-optional (legacy signatures, migrate gradually)
+    "RUF022", # unsorted __all__ (grouped by category intentionally)
     "UP006",  # non-pep585-annotation (use list[] not List, gradual migration)
     "UP035",  # deprecated-import (gradual migration)
 ]
@@ -100,9 +106,10 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B", "SIM"]  # relax bugbear/simplify in tests
 "pyescan/metrics/metrics.py" = ["F811"]  # re-imports via registry decorator
+"pyescan/core/annotation.py" = ["F821"]  # forward reference "BaseScan" is valid
 # Legacy modules - lint gradually, don't block CI
 "pyescan/core/visualisation.py" = ["F", "E", "B", "UP", "RUF"]
-"pyescan/tools/*" = ["F", "E", "B", "UP", "RUF"]
+"pyescan/tools/*" = ["F", "E", "B", "UP", "RUF", "SIM"]
 
 [tool.coverage.run]
 source = ["pyescan"]
