@@ -25,7 +25,7 @@ def _build_annotation_from_array(data): # TODO - move to annotation constructor
     return annotation
 
 def _build_annotation_from_dataframe_base(df, file_path_col='file_path', index_col='bscan_index'):
-    df_copy = df.copy()
+    df = df.copy()
     
     # Convert bscan_index to int (it's float after to_numeric)
     df[index_col] = df[index_col].astype(int)

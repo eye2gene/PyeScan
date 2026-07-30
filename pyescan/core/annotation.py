@@ -1,5 +1,5 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
-from cached_property import cached_property
+from abc import ABCMeta, abstractmethod
+from functools import cached_property
 import math
 from numpy.typing import NDArray
 from PIL import Image as PILImage
@@ -92,7 +92,8 @@ class Annotation(metaclass=ABCMeta):
     def get_volume_mm(self):
         raise NotImplementedError()
         
-    @abstractproperty
+    @property
+    @abstractmethod
     def data(self) -> NDArray:
         raise NotImplementedError()
     

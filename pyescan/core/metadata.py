@@ -1,5 +1,5 @@
-from abc import ABCMeta, abstractclassmethod, abstractmethod, abstractproperty
-from cached_property import cached_property
+from abc import ABCMeta, abstractmethod
+from functools import cached_property
 from collections import defaultdict
 from typing import Any, Dict, List, Union, Optional
 import os
@@ -57,17 +57,17 @@ class MetadataView():
     def parser(self) -> Optional[MetadataParser]:
         return self._parser or self._record._parser
     
-    def __getattribute__(self, attribute_name: str) -> Any:
-        try:
-            return super().__getattribute__(attribute_name)
-        except AttributeError as e:
-            # Try get value from parser
-            res = self.get_value(attribute_name)
-            if not res is None:
-                return res
-            else:
-                # If not found, raise the standard AttributeError
-                raise 
+    def __getattr__(self, attribute_name: str) -> Any:
+        # Only called when normal attribute lookup fails
+        parser = object.__getattribute__(self, '_parser') or object.__getattribute__(self, '_record')._parser
+        if parser is None:
+            raise AttributeError(f"'{self.__class__.__name__}' has no attribute '{attribute_name}' and no parser is configured")
+        record = object.__getattribute__(self, '_record')
+        view_info = object.__getattribute__(self, '_view_info')
+        res = parser.get_value(attribute_name, record, view_info)
+        if res is None:
+            raise AttributeError(f"'{self.__class__.__name__}' has no attribute '{attribute_name}' (parser returned None)")
+        return res
             
     def get_view(self, view_info: Optional[Dict[str, Any]]) -> "MetadataView":
         return self.__class__(self._record, view_info=view_info, parser=self._parser)

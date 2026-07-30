@@ -1,4 +1,4 @@
-from cached_property import cached_property
+from functools import cached_property
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image as PILImage

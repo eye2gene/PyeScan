@@ -77,12 +77,14 @@ class OCTScan(BaseScan):
         return self._bscans.data
     
     def preload(self):
-        self._enface.preload()
-        self._scans.preload()
+        if self._enface:
+            self._enface.preload()
+        self._bscans.preload()
     
     def unload(self):
-        self._enface.unload()
-        self._scans.unload()
+        if self._enface:
+            self._enface.unload()
+        self._bscans.unload()
         
     @property
     def image(self) -> BaseImage:
@@ -163,7 +165,7 @@ class OCTScan(BaseScan):
         image = self.images[bscan_index]
         masks = [annotation.images.get(bscan_index, None) for annotation in self.annotations.values()]
         default_colors = generate_distinct_colors(len(self.annotations))
-        colors = [annotation._color or default_colors[i] for i, annotation in enumerate(self.annotations.values())]
+        colors = [(annotation._color or default_colors[i]) for i, annotation in enumerate(self.annotations.values())]
         annotated_image = overlay_masks(image, masks, colors=colors, feature_names=self.annotations.keys(), alpha=0.5)
         return annotated_image # Should maybe convert to PIL image
     

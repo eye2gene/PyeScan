@@ -10,17 +10,21 @@ class MetricProcessor:
     def __init__(self, metrics: List[Metric]):
         self.metrics = {m.name: m for m in metrics}
         
-    def _stat_exists(self, stat: str, entry_data: Any, cache: Dict[str,Any] = {}) -> bool:
+    def _stat_exists(self, stat: str, entry_data: Any, cache: Optional[Dict[str,Any]] = None) -> bool:
+        if cache is None:
+            cache = {}
         if stat in entry_data:
             return True
         elif stat in cache.get('computed_stats',{}):
             return True
         return False
     
-    def _get_stat(self, stat: str, entry_data: Any, cache: Dict[str,Any] = {}) -> Any:
+    def _get_stat(self, stat: str, entry_data: Any, cache: Optional[Dict[str,Any]] = None) -> Any:
+        if cache is None:
+            cache = {}
         if stat in entry_data:
             return entry_data[stat]
-        elif stat in cache['computed_stats']:
+        elif stat in cache.get('computed_stats', {}):
             return cache['computed_stats'][stat]
         raise ValueError(f"A method tried to get {stat} from entry, but it was not found!\n\n Entry:\n{entry_data}\n\nCache:\n{cache}")
 

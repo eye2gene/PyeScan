@@ -2,7 +2,15 @@ from pyescan.core.image import LazyImage
 
 from pyescan.core.scan_enface import IRScan, FAFScan
 from pyescan.core.scan_oct import BScan, BScanArray, OCTScan
-    
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+KNOWN_MODALITIES = {
+    'OCT', 'SLO - Infrared', 'AF - Blue', 'Color Fundus',
+}
+
 
 def build_oct_from_metadata(oct_meta, enface_meta=None):
     
@@ -19,6 +27,10 @@ def build_oct_from_metadata(oct_meta, enface_meta=None):
         bscan_img = LazyImage(bscan_img_path)
         bscan = BScan(bscan_img, i, bscan_meta)
         bscans.append(bscan)
+
+    if not bscans:
+        logger.warning("OCT scan has no B-scans. The resulting scan object will be empty.")
+
     bscan_array = BScanArray(bscans)
     
     scan = OCTScan(enface, bscan_array, metadata=oct_meta)
@@ -38,6 +50,8 @@ def build_ir_from_metadata(scan_meta):
 
 def build_from_metadata(metadata):
     scans = list()
+    skipped_groups = []
+
     for group in metadata.get_groups():
         modalities = [scan.modality for scan in group]
 
@@ -46,7 +60,7 @@ def build_from_metadata(metadata):
             scan = build_oct_from_metadata(oct_meta, ir_meta)
             scans.append(scan)
             
-        elif modalities == ['OCT', 'SLO - Infrared' ]:
+        elif modalities == ['OCT', 'SLO - Infrared']:
             oct_meta, ir_meta = group
             scan = build_oct_from_metadata(oct_meta, ir_meta)
             scans.append(scan)
@@ -67,7 +81,14 @@ def build_from_metadata(metadata):
             scans.append(scan)
             
         else:
-            print("Skipping Group", modalities)
+            skipped_groups.append(modalities)
+            logger.warning(f"Skipping unrecognised scan group with modalities: {modalities}")
+
+    if not scans and skipped_groups:
+        raise ValueError(
+            f"No scans could be built from the metadata. "
+            f"All groups had unrecognised modality combinations: {skipped_groups}. "
+            f"Supported modalities: {sorted(KNOWN_MODALITIES)}"
+        )
+
     return scans
-    
-    

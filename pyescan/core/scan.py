@@ -1,5 +1,5 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
-from cached_property import cached_property
+from abc import ABCMeta, abstractmethod
+from functools import cached_property
 from numpy.typing import NDArray
 from typing import Any, Dict, List, Union, Optional
 
@@ -13,7 +13,7 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
                  parent: "BaseScan" = None,
                  *args, **kwargs):
         self._record = None
-        self._group_id = None # This should uniquely identify the high-level scan within the record
+        #self._group_id = None # This should uniquely identify the high-level scan within the record
         
         self._metadata = metadata # MetadataView onto a record
 
@@ -22,7 +22,7 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
         self._parent = parent
     
     def __repr__(self):
-        return self.__class__.__name__
+        return f"{self.__class__.__name__}(source_id={self.source_id})"
 
     def __str__(self):
         return str(self.__repr__())
@@ -55,7 +55,7 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
         
     def add_annotation(self, feature_name: str, annotation: Annotation, color=None) -> None:
         annotation._scan = self
-        if not color is None:
+        if not (color is None):
             annotation._color = color
         self._annotations[feature_name] = annotation
         
@@ -70,11 +70,13 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
     def annotations(self) -> Dict[str, Annotation]:
         return self._annotations
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def image(self) -> BaseImage:
         raise NotImplementedError()
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def data(self) -> NDArray:
         raise NotImplementedError()
         
