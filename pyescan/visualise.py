@@ -568,3 +568,101 @@ def animate_oct(scan,
                        duration=duration, loop=0)
 
     return frames
+
+
+# ---------------------------------------------------------------------------
+# Save annotated volume as images
+# ---------------------------------------------------------------------------
+
+def save_annotated_volume(scan,
+                          output_dir: str,
+                          annotations: Optional[Dict[str, "Annotation"]] = None,
+                          alpha: float = 0.4,
+                          format: str = "png",
+                          prefix: Optional[str] = None,
+                          as_animation: bool = False,
+                          fps: int = 5,
+                          include_enface: bool = True,
+                          include_raw: bool = False,
+                          progress: bool = True) -> str:
+    """
+    Save an annotated OCT volume as a series of images or a single animation.
+
+    Parameters
+    ----------
+    scan : OCTScan
+        OCT scan to render.
+    output_dir : str
+        Output directory. Created if it doesn't exist.
+    annotations : dict, optional
+        Annotations to overlay. If None, uses scan.annotations.
+    alpha : float
+        Overlay transparency.
+    format : str
+        Image format for individual frames ("png", "jpg", etc.).
+    prefix : str, optional
+        Filename prefix. Defaults to scan.source_id if available.
+    as_animation : bool, default False
+        If True, saves a single GIF instead of individual frames.
+    fps : int
+        Frames per second (only used if as_animation=True).
+    include_enface : bool
+        Whether to include enface panel alongside each B-scan.
+    include_raw : bool
+        Whether to include raw (un-annotated) panels.
+    progress : bool
+        Whether to show progress bar.
+
+    Returns
+    -------
+    str
+        Path to the output directory (or GIF file if as_animation=True).
+    """
+    if as_animation:
+        # Use animate_oct and save as GIF
+        name = prefix or getattr(scan, 'source_id', 'scan')
+        gif_path = str(Path(output_dir) / f"{name}.gif")
+        animate_oct(scan, output_path=gif_path, annotations=annotations,
+                    include_enface=include_enface, include_raw=include_raw,
+                    fps=fps, alpha=alpha, progress=progress)
+        return gif_path
+
+    # Save as individual frames
+    from .core.visualisation import overlay_masks, generate_distinct_colors
+
+    if annotations is None:
+        annotations = scan.annotations if scan.annotations else {}
+
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    name = prefix or getattr(scan, 'source_id', 'scan')
+
+    n_colors = len(annotations)
+    default_colors = generate_distinct_colors(n_colors) if n_colors else []
+    color_list = [ann.color or default_colors[i] for i, ann in enumerate(annotations.values())]
+
+    iterator = range(len(scan.bscans))
+    if progress:
+        try:
+            import tqdm
+            iterator = tqdm.tqdm(iterator, desc="Saving frames", leave=False)
+        except ImportError:
+            pass
+
+    for i in iterator:
+        bscan_img = scan.bscans[i].image
+        masks = []
+        for ann in annotations.values():
+            if ann.is_volume and i < len(ann.slices):
+                d = ann.slices[i].data
+                masks.append(PILImage.fromarray(d.astype(np.uint8)) if d is not None else None)
+            else:
+                masks.append(None)
+
+        annotated = overlay_masks(bscan_img, masks, colors=color_list,
+                                  feature_names=list(annotations.keys()), alpha=alpha)
+        filename = f"{name}_{i}.{format}"
+        annotated.save(out / filename)
+
+    return str(out)
