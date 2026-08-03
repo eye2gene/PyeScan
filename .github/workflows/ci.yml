@@ -14,4 +14,4 @@ on:
 
 jobs:
   ci:
-    uses: eye2Gene/e2g-pypkg/.github/workflows/python-ci.yml@main
+    uses: eye2Gene/e2g-workflows/.github/workflows/python-ci.yml@main
