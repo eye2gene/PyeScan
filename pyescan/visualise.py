@@ -59,49 +59,8 @@ def scan_summary(scan) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Projection helpers
+# Mask postprocessing for display
 # ---------------------------------------------------------------------------
-
-def project_annotation_to_enface(scan, annotation,
-                                 thickness: bool = False,
-                                 smooth: float = 0) -> NDArray:
-    """
-    Project an OCT volume annotation onto the enface plane.
-
-    Parameters
-    ----------
-    scan : OCTScan
-        The scan providing the geometry for projection.
-    annotation : Annotation
-        Volume annotation to project.
-    thickness : bool, default False
-        If True, project sum along depth axis (thickness map).
-        If False, project binary presence (any along depth).
-    smooth : float, default 0
-        Gaussian smoothing sigma applied after projection. 0 = no smoothing.
-
-    Returns
-    -------
-    NDArray
-        2D projected mask in enface coordinates.
-    """
-    from .core.utils import _pad_array
-
-    data = annotation.data
-    if data.ndim == 2:
-        return data.astype(np.float64)
-
-    feat_data = _pad_array(data.astype(np.uint8), len(scan))
-
-    if thickness:
-        projected = scan.transform_to_enface(feat_data.sum(axis=1).astype(np.float64))
-    else:
-        projected = scan.transform_to_enface(feat_data.any(axis=1).astype(np.float64))
-
-    if smooth > 0:
-        projected = gaussian_filter(projected, sigma=smooth)
-
-    return projected
 
 
 def postprocess_mask(mask: NDArray, smooth: float = 0,
@@ -278,8 +237,11 @@ def show_enface(scan,
     legend_handles = []
     for name, annotation in annotations.items():
         color = colors.get(name, 'lime')
-        proj = project_annotation_to_enface(scan, annotation, smooth=smooth)
-        masked = postprocess_mask(proj, threshold=threshold)
+        # Project to enface — scan owns the geometry, visualise owns the reduction
+        enface_ann = scan.annotation_to_enface(annotation)
+        proj = enface_ann.data.astype(np.float32)
+        # Smoothing and thresholding are display concerns
+        masked = postprocess_mask(proj, smooth=smooth, threshold=threshold)
 
         if filled:
             ax.imshow(masked, cmap=ListedColormap([color]), alpha=alpha)
@@ -322,107 +284,36 @@ def show_enface(scan,
 # OCT B-scan overlay
 # ---------------------------------------------------------------------------
 
-def show_oct(scan,
-             bscan_index: Optional[int] = None,
-             annotations: Optional[Dict[str, "Annotation"]] = None,
-             colors: Optional[Dict[str, str]] = None,
-             alpha: float = 0.4,
-             title: Optional[str] = None,
-             figsize: Tuple[float, float] = (12, 4),
-             show_enface: bool = True,
-             ax=None,
-             show: bool = True):
+def show_oct(scan, bscan_index=None, **kwargs):
     """
-    Display a B-scan (or middle B-scan) with annotation mask overlays.
+    Display a single annotated B-scan frame. Shortcut for animate_oct with one frame.
 
-    Optionally shows the enface with the B-scan position marked.
-
-    Parameters
-    ----------
-    scan : OCTScan
-        OCT scan to visualise.
-    bscan_index : int, optional
-        Which B-scan to show. Default: middle.
-    annotations : dict, optional
-        Annotations to overlay. If None, uses scan.annotations.
-    colors : dict, optional
-        Color map for annotations.
-    alpha : float
-        Overlay transparency.
-    title : str, optional
-        Plot title.
-    figsize : tuple
-        Figure size.
-    show_enface : bool
-        Whether to show enface alongside with B-scan position marked.
-    ax : Axes, optional
-        Existing axes (only used if show_enface=False).
-    show : bool
-        Whether to call plt.show().
+    See animate_oct for full parameter documentation.
+    Additional parameter: show (bool) — whether to call plt.show().
     """
     import matplotlib.pyplot as plt
-    from .core.visualisation import draw_bscan_lines, overlay_masks, generate_distinct_colors
 
     if bscan_index is None:
         bscan_index = len(scan.bscans) // 2
 
-    if annotations is None:
-        annotations = scan.annotations if scan.annotations else {}
+    show = kwargs.pop('show', True)
+    figsize = kwargs.pop('figsize', (12, 4))
+    title = kwargs.pop('title', None)
 
-    default_colors = [(0, 255, 0), (255, 0, 0), (0, 255, 255), (255, 0, 255)]
-    if colors is None:
-        color_list = [default_colors[i % len(default_colors)] for i in range(len(annotations))]
-    else:
-        color_list = [colors.get(name, default_colors[i % len(default_colors)])
-                      for i, name in enumerate(annotations.keys())]
+    # Render just this one frame
+    frames = animate_oct(scan, bscan_indices=[bscan_index], progress=False, **kwargs)
+    if not frames:
+        return
 
-    # Get the B-scan image
-    bscan_img = scan.bscans[bscan_index].image
-
-    # Get masks for this B-scan
-    masks = []
-    for ann in annotations.values():
-        if ann.is_volume and bscan_index < len(ann.slices):
-            slice_data = ann.slices[bscan_index].data
-            if slice_data is not None:
-                masks.append(PILImage.fromarray(slice_data.astype(np.uint8)))
-            else:
-                masks.append(None)
-        else:
-            masks.append(None)
-
-    if show_enface and hasattr(scan, 'enface') and scan._enface is not None:
-        fig, (ax_enface, ax_bscan) = plt.subplots(1, 2, figsize=figsize)
-
-        # Enface with B-scan position
-        try:
-            locations = scan.get_bscan_enface_locations()
-            enface_marked = draw_bscan_lines(scan.enface.image, locations, bscan_index)
-            ax_enface.imshow(enface_marked)
-        except (AttributeError, TypeError):
-            ax_enface.imshow(scan.enface.image, cmap='gray')
-        ax_enface.axis('off')
-        ax_enface.set_title(f"Enface (B-scan {bscan_index})", fontsize=9)
-
-        # B-scan with overlay
-        annotated = overlay_masks(bscan_img, masks, colors=color_list,
-                                  feature_names=list(annotations.keys()), alpha=alpha)
-        ax_bscan.imshow(annotated)
-        ax_bscan.axis('off')
-        ax_bscan.set_title(f"B-scan {bscan_index}", fontsize=9)
-    else:
-        if ax is None:
-            fig, ax = plt.subplots(figsize=figsize)
-        annotated = overlay_masks(bscan_img, masks, colors=color_list,
-                                  feature_names=list(annotations.keys()), alpha=alpha)
-        ax.imshow(annotated)
-        ax.axis('off')
-
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.imshow(frames[0])
+    ax.axis('off')
     if title:
-        plt.suptitle(title, fontsize=11)
+        ax.set_title(title, fontsize=11)
     if show:
         plt.tight_layout()
         plt.show()
+    return ax
 
 
 # ---------------------------------------------------------------------------
@@ -431,41 +322,52 @@ def show_oct(scan,
 
 def animate_oct(scan,
                 output_path: Optional[str] = None,
+                output_dir: Optional[str] = None,
+                bscan_indices: Optional[List[int]] = None,
                 annotations: Optional[Dict[str, "Annotation"]] = None,
                 include_enface: bool = True,
-                include_raw: bool = True,
+                include_raw: bool = False,
                 fps: int = 5,
                 alpha: float = 0.4,
+                format: str = "png",
+                prefix: Optional[str] = None,
                 progress: bool = True) -> Optional[List[PILImage.Image]]:
     """
-    Create an animated GIF of an OCT volume with annotations.
-
-    Shows annotated enface (with B-scan position) alongside annotated B-scans,
-    optionally with raw versions underneath.
+    Render an annotated OCT volume as an animation or image series.
 
     Parameters
     ----------
     scan : OCTScan
-        OCT scan to animate.
+        OCT scan to render.
     output_path : str, optional
-        Path to save the GIF. If None, returns frame list without saving.
+        Path to save as GIF animation. If None and output_dir is None,
+        returns frames without saving.
+    output_dir : str, optional
+        Directory to save individual frames (one PNG per B-scan).
+        If given, saves frames as {prefix}_{index}.{format} instead of GIF.
+    bscan_indices : list[int], optional
+        Which B-scans to render. Defaults to all.
     annotations : dict, optional
         Annotations to overlay. If None, uses scan.annotations.
-    include_enface : bool
-        Whether to include enface panel.
-    include_raw : bool
+    include_enface : bool, default True
+        Whether to include enface panel alongside each B-scan.
+    include_raw : bool, default False
         Whether to include raw (un-annotated) panels below.
-    fps : int
-        Frames per second for the GIF.
-    alpha : float
+    fps : int, default 5
+        Frames per second for GIF output.
+    alpha : float, default 0.4
         Overlay transparency.
-    progress : bool
+    format : str, default "png"
+        Image format for individual frames (only used with output_dir).
+    prefix : str, optional
+        Filename prefix for individual frames. Defaults to scan.source_id.
+    progress : bool, default True
         Whether to show progress bar.
 
     Returns
     -------
-    list[PIL.Image] or None
-        List of frames if output_path is None.
+    list[PIL.Image]
+        List of rendered frames.
     """
     from .core.visualisation import draw_bscan_lines, overlay_masks, generate_distinct_colors
 
@@ -488,13 +390,14 @@ def animate_oct(scan,
     if has_enface:
         enface_base = scan._annotated_enface(contours=True, heatmap=False) if annotations else scan.enface.image
         enface_raw = scan.enface.image
-    
+
     n_colors = len(annotations)
     default_colors = generate_distinct_colors(n_colors) if n_colors else []
     color_list = [ann.color or default_colors[i] for i, ann in enumerate(annotations.values())]
 
     frames = []
-    iterator = range(len(scan.bscans))
+    indices = bscan_indices if bscan_indices is not None else list(range(len(scan.bscans)))
+    iterator = indices
     if progress:
         try:
             import tqdm
@@ -515,12 +418,11 @@ def animate_oct(scan,
                 masks.append(PILImage.fromarray(d.astype(np.uint8)) if d is not None else None)
             else:
                 masks.append(None)
-        annotated_bscan = overlay_masks(bscan_img, masks, colors=color_list, alpha=alpha)
+        annotated_bscan = overlay_masks(bscan_img, masks, colors=color_list,
+                                        feature_names=list(annotations.keys()), alpha=alpha)
 
         if has_enface:
-            # Enface with B-scan line
             annotated_enface = draw_bscan_lines(enface_base, [bscan_locations[i]], 0)
-            # Normalise heights
             target_h = min(annotated_enface.height, annotated_bscan.height) // (2 if include_raw else 1)
             enface_resized = annotated_enface.resize(
                 (int(annotated_enface.width * target_h / annotated_enface.height), target_h))
@@ -561,108 +463,17 @@ def animate_oct(scan,
             y_offset += row[0].height
         frames.append(frame)
 
-    if output_path:
+    # Save output
+    if output_dir:
+        out = Path(output_dir)
+        out.mkdir(parents=True, exist_ok=True)
+        name = prefix or getattr(scan, 'source_id', 'scan')
+        for i, frame in enumerate(frames):
+            frame.save(out / f"{name}_{i}.{format}")
+    elif output_path:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         duration = int(1000 / fps)
         frames[0].save(output_path, save_all=True, append_images=frames[1:],
                        duration=duration, loop=0)
 
     return frames
-
-
-# ---------------------------------------------------------------------------
-# Save annotated volume as images
-# ---------------------------------------------------------------------------
-
-def save_annotated_volume(scan,
-                          output_dir: str,
-                          annotations: Optional[Dict[str, "Annotation"]] = None,
-                          alpha: float = 0.4,
-                          format: str = "png",
-                          prefix: Optional[str] = None,
-                          as_animation: bool = False,
-                          fps: int = 5,
-                          include_enface: bool = True,
-                          include_raw: bool = False,
-                          progress: bool = True) -> str:
-    """
-    Save an annotated OCT volume as a series of images or a single animation.
-
-    Parameters
-    ----------
-    scan : OCTScan
-        OCT scan to render.
-    output_dir : str
-        Output directory. Created if it doesn't exist.
-    annotations : dict, optional
-        Annotations to overlay. If None, uses scan.annotations.
-    alpha : float
-        Overlay transparency.
-    format : str
-        Image format for individual frames ("png", "jpg", etc.).
-    prefix : str, optional
-        Filename prefix. Defaults to scan.source_id if available.
-    as_animation : bool, default False
-        If True, saves a single GIF instead of individual frames.
-    fps : int
-        Frames per second (only used if as_animation=True).
-    include_enface : bool
-        Whether to include enface panel alongside each B-scan.
-    include_raw : bool
-        Whether to include raw (un-annotated) panels.
-    progress : bool
-        Whether to show progress bar.
-
-    Returns
-    -------
-    str
-        Path to the output directory (or GIF file if as_animation=True).
-    """
-    if as_animation:
-        # Use animate_oct and save as GIF
-        name = prefix or getattr(scan, 'source_id', 'scan')
-        gif_path = str(Path(output_dir) / f"{name}.gif")
-        animate_oct(scan, output_path=gif_path, annotations=annotations,
-                    include_enface=include_enface, include_raw=include_raw,
-                    fps=fps, alpha=alpha, progress=progress)
-        return gif_path
-
-    # Save as individual frames
-    from .core.visualisation import overlay_masks, generate_distinct_colors
-
-    if annotations is None:
-        annotations = scan.annotations if scan.annotations else {}
-
-    out = Path(output_dir)
-    out.mkdir(parents=True, exist_ok=True)
-
-    name = prefix or getattr(scan, 'source_id', 'scan')
-
-    n_colors = len(annotations)
-    default_colors = generate_distinct_colors(n_colors) if n_colors else []
-    color_list = [ann.color or default_colors[i] for i, ann in enumerate(annotations.values())]
-
-    iterator = range(len(scan.bscans))
-    if progress:
-        try:
-            import tqdm
-            iterator = tqdm.tqdm(iterator, desc="Saving frames", leave=False)
-        except ImportError:
-            pass
-
-    for i in iterator:
-        bscan_img = scan.bscans[i].image
-        masks = []
-        for ann in annotations.values():
-            if ann.is_volume and i < len(ann.slices):
-                d = ann.slices[i].data
-                masks.append(PILImage.fromarray(d.astype(np.uint8)) if d is not None else None)
-            else:
-                masks.append(None)
-
-        annotated = overlay_masks(bscan_img, masks, colors=color_list,
-                                  feature_names=list(annotations.keys()), alpha=alpha)
-        filename = f"{name}_{i}.{format}"
-        annotated.save(out / filename)
-
-    return str(out)

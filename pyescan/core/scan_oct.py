@@ -156,25 +156,62 @@ class OCTScan(BaseScan):
         return tform.inverse(np.array(points))
 
     def transform_to_enface(self, image: NDArray) -> NDArray:
+        """
+        Project an array from OCT space to enface pixel coordinates.
+
+        Handles:
+        - 2D (n_bscans x width): single-channel projection (e.g. presence map)
+        - 3D (height x width x channels) where channels <= 4: multi-channel
+          image warp (e.g. RGBA)
+        - 3D (n_bscans x height x width): projects each depth row, returns
+          (height x enface_h x enface_w) — useful for full volume projection
+
+        Parameters
+        ----------
+        image : NDArray
+            2D or 3D array in OCT space.
+
+        Returns
+        -------
+        NDArray
+            Warped array in enface pixel coordinates.
+        """
         image = np.array(image)
-        tform = self._get_enface_transform(image.shape)
+        enface_h, enface_w = self.enface.image.height, self.enface.image.width
 
-        # Apply the transform
-        # Seeps to need the inverse trasfm, and also use transpose
-        height, width = self.enface.image.height, self.enface.image.width
-        warped = warp(image.swapaxes(0, 1), tform.inverse, output_shape=(height, width))
+        if image.ndim == 2:
+            tform = self._get_enface_transform(image.shape)
+            return warp(image.swapaxes(0, 1), tform.inverse, output_shape=(enface_h, enface_w))
 
-        #return warped[::-1,...] # reverse due to different indexing of y
-        return warped
+        elif image.ndim == 3:
+            # Distinguish multi-channel image (h, w, c) from volume (n, h, w)
+            if image.shape[2] <= 4:
+                # Multi-channel image — use 2D warp (skimage handles channels)
+                tform = self._get_enface_transform(image.shape[:2])
+                return warp(image.swapaxes(0, 1), tform.inverse, output_shape=(enface_h, enface_w))
+            else:
+                # Volume (n_bscans, depth, width) — warp each depth slice
+                n_bscans, depth, width = image.shape
+                tform = self._get_enface_transform((n_bscans, width))
+                result = np.zeros((depth, enface_h, enface_w), dtype=np.float64)
+                for d in range(depth):
+                    slice_2d = image[:, d, :]  # (n_bscans, width)
+                    result[d] = warp(slice_2d.swapaxes(0, 1), tform.inverse,
+                                     output_shape=(enface_h, enface_w))
+                return result
+
+        else:
+            raise ValueError(f"transform_to_enface expects 2D or 3D input, got {image.ndim}D")
 
     def annotation_to_enface(self, annotation) -> "Annotation":
         """
         Project an OCT volume annotation to enface space.
 
-        Takes the annotation volume, projects it through the scan geometry,
-        and returns a new single-slice Annotation in enface coordinates.
-        The projection uses maximum intensity along the depth axis to produce
-        a 2D enface presence map.
+        Collapses the depth axis (binary presence per A-scan) then projects
+        to enface coordinates using transform_to_enface.
+
+        For custom reductions (thickness maps, etc.), use transform_to_enface
+        directly with a pre-reduced array.
 
         Parameters
         ----------
@@ -184,13 +221,13 @@ class OCTScan(BaseScan):
         Returns
         -------
         Annotation
-            A new enface annotation with a single projected raster slice.
+            A new single-slice enface annotation.
         """
         from .annotation import Annotation, AnnotationSlice
+        from .utils import _pad_array
 
         vol_data = annotation.data
         if vol_data.ndim == 2:
-            # Already enface-like, just wrap it
             return Annotation(
                 slices=AnnotationSlice(raster=vol_data),
                 feature_name=annotation.feature_name,
@@ -199,11 +236,9 @@ class OCTScan(BaseScan):
                 color=annotation.color,
             )
 
-        # Collapse depth axis: for each bscan, take any() along height axis
-        # to get a 2D (n_bscans x width) presence map, then warp to enface
-        presence = vol_data.any(axis=1).astype(np.float64)  # shape: (n_bscans, width)
-
-        # Project the (n_bscans x width) map to enface coordinates
+        # Pad to match scan length, collapse depth, project
+        feat_data = _pad_array(vol_data.astype(np.uint8), len(self))
+        presence = feat_data.any(axis=1).astype(np.float64)  # (n_bscans x width)
         projected = self.transform_to_enface(presence)
         projected_mask = (projected * 255).astype(np.uint8)
 
@@ -297,7 +332,8 @@ class OCTScan(BaseScan):
             data= _pad_array(annotation.data, len(self))
             rendered_mask = render_volume_data(data, color=color, heatmap=heatmap, contours=contours)
             projected_mask = self.transform_to_enface(rendered_mask) * 255
-            projected_mask[...,3] *= alpha
+            projected_mask = projected_mask.astype(np.float64)
+            projected_mask[..., 3] *= alpha
             projected_masks.append(projected_mask)
 
         # Apply alpha blending
