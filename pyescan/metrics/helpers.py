@@ -1,11 +1,13 @@
+from typing import Any, Callable, Dict, List, Optional, Union
+
 import numpy as np
 import pandas as pd
 import tqdm
-from typing import Any, Dict, Callable, List, Optional, Union
 
 from .metric import Metric
 from .processor import MetricProcessor
 from .registry import PYESCAN_GLOBAL_METRICS
+
 
 class PandasRowWrapperHelper:
     def __init__(self,
@@ -46,13 +48,15 @@ class PandasRowWrapperHelper:
     
 def run_on_dataframe(df,
                      stat_name:Union[str,List[str]],
-                     col_mapping:Dict[str,str] = {},
-                     suffix: str = None,
+                     col_mapping:Optional[Dict[str,str]] = None,
+                     suffix: Optional[str] = None,
                      auto_merge: bool = False,
                      named_only: bool = False,
-                     metric_list: List[Metric] = None,
+                     metric_list: Optional[List[Metric]] = None,
                      threaded: bool = False):
     
+    if col_mapping is None:
+        col_mapping = {}
     metrics = metric_list or PYESCAN_GLOBAL_METRICS.metrics
     processor = MetricProcessor(metrics)
     
@@ -62,7 +66,7 @@ def run_on_dataframe(df,
     target_metrics = []
     for s in stat_name:
         metric, params = processor.get_metric_by_stat(s)
-        if not metric is None:
+        if metric is not None:
             target_metrics.append((metric, params))
         else:
             print(f"WARNING: Could not find metric to compute {s} - skipping!")

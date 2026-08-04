@@ -1,5 +1,6 @@
 import os
 
+
 def _flatten_dict(dict_in, name=""):
     # Recursive function that "flattens" a nested dict by concatenating key names of sub-dicts
     # e.g. { "a": 1, "b": { "c": 2, "d": { "e": 3 } } } becomes { "a": 1, "b_c": 2, "b_d_e": 3}
@@ -79,6 +80,7 @@ def _process_ce_metadata(metadata, identifier_dict, skip_image_level=False):
 # TODO: Break into functions for parsing all the metadata, then can join with images table 
 def get_ce_export_summary(export_location, file_structure="pat/sdb", merged=True, skip_image_level=False):
     import json
+
     import pandas as pd
     import tqdm
         
@@ -165,33 +167,37 @@ def structure_to_regex(structure_pattern):
     return regex_pattern
     
 
-def summarise_dataset(dataset_root, structure="{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png", regex=None, progress=True):
+def summarise_dataset(dataset_root, structure=r"{pat}/{sdb}/{source_id}_{bscan_index:\d+}.png", regex=None, progress=True):
     import os
     import re
+
     import pandas as pd
-    import tqdm
-    
+
+    from .file_discovery import find_files as _find_files_glob
+
     dataset_root = os.path.abspath(dataset_root)
-    
-    regex_pattern = regex if regex else structure_to_regex(structure)
-    
-    records = list()
-    pbar = tqdm.tqdm(os.walk(dataset_root)) if progress else os.walk(dataset_root)
-    for root, dirs, filenames in pbar:
-        for filename in filenames:
-            file_path = os.path.join(root, filename)
-            rel_path = os.path.relpath(file_path, dataset_root)
-            
-            match = re.match(regex_pattern, rel_path)
-            if match:
-                record = { "file_path": file_path, "file_path_relative": rel_path }
-                record.update(match.groupdict())
-                records.append(record)
-        
-        if progress:
-            pbar.set_postfix({'scans_found': len(records)})
-        
-    return pd.DataFrame(records)
+
+    # If a custom regex is provided, fall back to os.walk (can't glob from arbitrary regex)
+    if regex:
+        import tqdm
+        regex_compiled = re.compile(regex)
+        records = list()
+        pbar = tqdm.tqdm(os.walk(dataset_root)) if progress else os.walk(dataset_root)
+        for root, dirs, filenames in pbar:
+            for filename in filenames:
+                file_path = os.path.join(root, filename)
+                rel_path = os.path.relpath(file_path, dataset_root)
+                match = regex_compiled.match(rel_path)
+                if match:
+                    record = {"file_path": file_path, "file_path_relative": rel_path}
+                    record.update(match.groupdict())
+                    records.append(record)
+            if progress:
+                pbar.set_postfix({'scans_found': len(records)})
+        return pd.DataFrame(records)
+
+    # Use glob-based fast path
+    return _find_files_glob(dataset_root, structure, progress=progress)
 
 
 def get_median_bscans(df, scan_id_key=['sdb', 'source_id'], index_key='bscan_index'):

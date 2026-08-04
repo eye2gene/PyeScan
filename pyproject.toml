@@ -1,0 +1,122 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyescan"
+version = "0.0.3"
+description = "A library for working with retinal scans exported by PrivateEye/CrystalEye"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "William Woof", email = "awwoof@hotmail.com" },
+]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Software Development :: Libraries",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "click",
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "tqdm",
+    "Pillow",
+    "scikit-image",
+]
+
+[project.optional-dependencies]
+interactive = [
+    "ipywidgets",
+    "IPython",
+]
+registration = [
+    "retinalysis",
+]
+parallel = [
+    "pathos",
+]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[project.scripts]
+summarise_ce_export = "pyescan.tools.cli:get_ce_export_summary_cli"
+summarise_dataset = "pyescan.tools.cli:summarise_dataset_cli"
+run_function_on_csv = "pyescan.tools.cli:run_function_on_csv_cli"
+run_function_over_csv = "pyescan.tools.cli:run_function_over_csv_cli"
+run_metric = "pyescan.tools.cli:run_metric_csv_cli"
+narrow_to_wide = "pyescan.tools.cli:narrow_to_wide_cli"
+
+[project.urls]
+Repository = "https://github.com/pontikos-lab/PyeScan"
+
+[tool.setuptools.packages.find]
+include = ["pyescan*"]
+exclude = ["dev*", "*.ipynb_checkpoints*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+src = ["pyescan", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "W",   # pycodestyle warnings
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "RUF", # ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long (handled by formatter if needed)
+    "E701",   # multiple statements on one line (existing style)
+    "W291",   # trailing whitespace (legacy, clean up gradually)
+    "W292",   # no newline at end of file
+    "W293",   # blank line with whitespace (legacy)
+    "B905",   # zip without strict (py3.10+)
+    "SIM102", # collapsible-if (readability preference, nested ifs can be clearer)
+    "SIM103", # needless-bool (explicit return True/False can be clearer)
+    "SIM108", # ternary operator (readability preference)
+    "SIM116", # dict-instead-of-if-else (readability preference)
+    "RUF005", # collection-literal-concatenation (stylistic, existing pattern)
+    "RUF012", # mutable class variables (common in this codebase)
+    "RUF013", # implicit-optional (legacy signatures, migrate gradually)
+    "RUF022", # unsorted __all__ (grouped by category intentionally)
+    "UP006",  # non-pep585-annotation (use list[] not List, gradual migration)
+    "UP035",  # deprecated-import (gradual migration)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B", "SIM"]  # relax bugbear/simplify in tests
+"pyescan/metrics/metrics.py" = ["F811"]  # re-imports via registry decorator
+"pyescan/core/annotation.py" = ["F821"]  # forward reference "BaseScan" is valid
+# Legacy modules - lint gradually, don't block CI
+"pyescan/core/visualisation.py" = ["F", "E", "B", "UP", "RUF"]
+"pyescan/tools/*" = ["F", "E", "B", "UP", "RUF", "SIM"]
+
+[tool.coverage.run]
+source = ["pyescan"]
+omit = [
+    "pyescan/tools/*",
+    "pyescan/core/visualisation.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true

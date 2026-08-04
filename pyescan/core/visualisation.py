@@ -1,8 +1,11 @@
 import colorsys
 import io
-from ipywidgets import widgets
+
 import numpy as np
-from PIL import Image as PILImage, ImageDraw, ImageFont
+from ipywidgets import widgets
+from PIL import Image as PILImage
+from PIL import ImageDraw, ImageFont
+
 
 def _encode_image(image, default="blank"):
     # Save image to buffer
@@ -225,8 +228,8 @@ def render_volume_data(data, color=(255, 0, 0), heatmap=True, contours=True, fig
     Uses matplotlib to render
     Returns: RGBA numpy array (h x w x 4)
     """
-    import matplotlib.pyplot as plt
     import matplotlib.colors as mcolors
+    import matplotlib.pyplot as plt
     
     cmap = mcolors.LinearSegmentedColormap.from_list('custom', [(0,0,0), np.array(color)/255])
         

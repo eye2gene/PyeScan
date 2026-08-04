@@ -1,15 +1,21 @@
-from IPython.display import display
+from typing import List
+
 import numpy as np
+from IPython.display import display
 from numpy.typing import NDArray
 from PIL import Image as PILImage
 from skimage.transform import ProjectiveTransform, warp
-from typing import Any, Dict, List, Optional, Union
 
 from .image import BaseImage, ImageVolume
 from .scan import BaseScan, SingleImageScan
 from .scan_enface import EnfaceScan
 from .utils import ArrayView, _pad_array
-from .visualisation import generate_distinct_colors, oct_display_widget, overlay_rgba_images, overlay_masks, render_volume_data
+from .visualisation import (
+    generate_distinct_colors,
+    overlay_masks,
+    overlay_rgba_images,
+    render_volume_data,
+)
 
 
 class BScan(SingleImageScan):
@@ -77,12 +83,14 @@ class OCTScan(BaseScan):
         return self._bscans.data
     
     def preload(self):
-        self._enface.preload()
-        self._scans.preload()
+        if self._enface:
+            self._enface.preload()
+        self._bscans.preload()
     
     def unload(self):
-        self._enface.unload()
-        self._scans.unload()
+        if self._enface:
+            self._enface.unload()
+        self._bscans.unload()
         
     @property
     def image(self) -> BaseImage:
@@ -148,22 +156,160 @@ class OCTScan(BaseScan):
         return tform.inverse(np.array(points))
 
     def transform_to_enface(self, image: NDArray) -> NDArray:
+        """
+        Project an array from OCT space to enface pixel coordinates.
+
+        Handles:
+        - 2D (n_bscans x width): single-channel projection (e.g. presence map)
+        - 3D (height x width x channels) where channels <= 4: multi-channel
+          image warp (e.g. RGBA)
+        - 3D (n_bscans x height x width): projects each depth row, returns
+          (height x enface_h x enface_w) — useful for full volume projection
+
+        Parameters
+        ----------
+        image : NDArray
+            2D or 3D array in OCT space.
+
+        Returns
+        -------
+        NDArray
+            Warped array in enface pixel coordinates.
+        """
         image = np.array(image)
-        tform = self._get_enface_transform(image.shape)
+        enface_h, enface_w = self.enface.image.height, self.enface.image.width
 
-        # Apply the transform
-        # Seeps to need the inverse trasfm, and also use transpose
-        height, width = self.enface.image.height, self.enface.image.width
-        warped = warp(image.swapaxes(0, 1), tform.inverse, output_shape=(height, width))
+        if image.ndim == 2:
+            tform = self._get_enface_transform(image.shape)
+            return warp(image.swapaxes(0, 1), tform.inverse, output_shape=(enface_h, enface_w))
 
-        #return warped[::-1,...] # reverse due to different indexing of y
-        return warped
+        elif image.ndim == 3:
+            # Distinguish multi-channel image (h, w, c) from volume (n, h, w)
+            if image.shape[2] <= 4:
+                # Multi-channel image — use 2D warp (skimage handles channels)
+                tform = self._get_enface_transform(image.shape[:2])
+                return warp(image.swapaxes(0, 1), tform.inverse, output_shape=(enface_h, enface_w))
+            else:
+                # Volume (n_bscans, depth, width) — warp each depth slice
+                n_bscans, depth, width = image.shape
+                tform = self._get_enface_transform((n_bscans, width))
+                result = np.zeros((depth, enface_h, enface_w), dtype=np.float64)
+                for d in range(depth):
+                    slice_2d = image[:, d, :]  # (n_bscans, width)
+                    result[d] = warp(slice_2d.swapaxes(0, 1), tform.inverse,
+                                     output_shape=(enface_h, enface_w))
+                return result
+
+        else:
+            raise ValueError(f"transform_to_enface expects 2D or 3D input, got {image.ndim}D")
+
+    def annotation_to_enface(self, annotation) -> "Annotation":
+        """
+        Project an OCT volume annotation to enface space.
+
+        Collapses the depth axis (binary presence per A-scan) then projects
+        to enface coordinates using transform_to_enface.
+
+        For custom reductions (thickness maps, etc.), use transform_to_enface
+        directly with a pre-reduced array.
+
+        Parameters
+        ----------
+        annotation : Annotation
+            An OCT volume annotation (multiple slices).
+
+        Returns
+        -------
+        Annotation
+            A new single-slice enface annotation.
+        """
+        from .annotation import Annotation, AnnotationSlice
+        from .utils import _pad_array
+
+        vol_data = annotation.data
+        if vol_data.ndim == 2:
+            return Annotation(
+                slices=AnnotationSlice(raster=vol_data),
+                feature_name=annotation.feature_name,
+                source_id=annotation.source_id,
+                model_info=annotation.model_info,
+                color=annotation.color,
+            )
+
+        # Pad to match scan length, collapse depth, project
+        feat_data = _pad_array(vol_data.astype(np.uint8), len(self))
+        presence = feat_data.any(axis=1).astype(np.float64)  # (n_bscans x width)
+        projected = self.transform_to_enface(presence)
+        projected_mask = (projected * 255).astype(np.uint8)
+
+        return Annotation(
+            slices=AnnotationSlice(raster=projected_mask),
+            feature_name=annotation.feature_name,
+            source_id=annotation.source_id,
+            model_info=annotation.model_info,
+            color=annotation.color,
+        )
+
+    def annotation_to_bscans(self, annotation) -> "Annotation":
+        """
+        Project an enface annotation to B-scan space.
+
+        Takes a single-slice (enface) annotation and projects it onto each
+        B-scan, producing a verticalised volume (binary presence per A-scan).
+
+        Parameters
+        ----------
+        annotation : Annotation
+            An enface annotation (single slice with 2D raster).
+
+        Returns
+        -------
+        Annotation
+            A new volume annotation with one slice per B-scan.
+        """
+        from .annotation import Annotation, AnnotationSlice, AnnotationVolume
+
+        enface_mask = annotation.data
+        if enface_mask.ndim != 2:
+            raise ValueError(
+                f"annotation_to_bscans expects a 2D enface annotation, "
+                f"got shape {enface_mask.shape}"
+            )
+
+        enface_mask_binary = enface_mask > (annotation.threshold * 255 if enface_mask.max() > 1 else annotation.threshold)
+        eH, eW = enface_mask_binary.shape[:2]
+
+        w = self.bscans[0].image.width
+        h = self.bscans[0].image.height
+        nrows = len(self)
+
+        # Build the enface projection map for all bscan points
+        pts = np.indices((nrows, w)).transpose(1, 2, 0).reshape((-1, 2))
+        proj_pts = self.project_to_enface(pts).reshape((nrows, w, 2))
+
+        slices = []
+        for bscan_index in range(nrows):
+            bscan_mask = np.zeros((h, w), dtype=np.uint8)
+            for j, (enface_x, enface_y) in enumerate(proj_pts[bscan_index]):
+                yi = max(0, min(int(round(enface_y)), eH - 1))
+                xi = max(0, min(int(round(enface_x)), eW - 1))
+                if enface_mask_binary[yi, xi]:
+                    bscan_mask[:, j] = 255
+            slices.append(AnnotationSlice(raster=bscan_mask))
+
+        return Annotation(
+            slices=AnnotationVolume(slices),
+            feature_name=annotation.feature_name,
+            source_id=annotation.source_id,
+            model_info=annotation.model_info,
+            color=annotation.color,
+        )
         
     def _annotated_bscan(self, bscan_index: int, features=None) -> NDArray:
         image = self.images[bscan_index]
         masks = [annotation.images.get(bscan_index, None) for annotation in self.annotations.values()]
         default_colors = generate_distinct_colors(len(self.annotations))
-        colors = [annotation._color or default_colors[i] for i, annotation in enumerate(self.annotations.values())]
+        colors = [(annotation.color or default_colors[i]) for i, annotation in enumerate(self.annotations.values())]
         annotated_image = overlay_masks(image, masks, colors=colors, feature_names=self.annotations.keys(), alpha=0.5)
         return annotated_image # Should maybe convert to PIL image
     
@@ -178,7 +324,7 @@ class OCTScan(BaseScan):
 
         # Generate colors if not provided
         default_colors = generate_distinct_colors(len(self.annotations))
-        colors = [annotation._color or default_colors[i] for i, annotation in enumerate(self.annotations.values())]
+        colors = [annotation.color or default_colors[i] for i, annotation in enumerate(self.annotations.values())]
 
         # Create an empty array for the overlay
         projected_masks = []
@@ -186,7 +332,8 @@ class OCTScan(BaseScan):
             data= _pad_array(annotation.data, len(self))
             rendered_mask = render_volume_data(data, color=color, heatmap=heatmap, contours=contours)
             projected_mask = self.transform_to_enface(rendered_mask) * 255
-            projected_mask[...,3] *= alpha
+            projected_mask = projected_mask.astype(np.float64)
+            projected_mask[..., 3] *= alpha
             projected_masks.append(projected_mask)
 
         # Apply alpha blending
@@ -199,14 +346,25 @@ class OCTScan(BaseScan):
         return result_image
         
     def _build_display_widget(self, enface_contours=True, enface_heatmap=True):
-        from .visualisation import oct_display_widget
+        from .visualisation import image_array_display_widget, oct_display_widget
+
         if self.annotations:
             annotated_images = list()
             for i, _ in enumerate(self.images):
                 annotated_images.append(self._annotated_bscan(i))
-            enface_image = self._annotated_enface(contours=enface_contours, heatmap=enface_heatmap)
+            enface_image = self._annotated_enface(contours=enface_contours, heatmap=enface_heatmap) if self._enface else None
         else:
             annotated_images = self.images
-            enface_image = self.enface.image
+            enface_image = self.enface.image if self._enface else None
 
-        return oct_display_widget(annotated_images, enface_image, self.get_bscan_enface_locations(), width=640, height=320, enface_size=320)
+        # Get bscan locations if available
+        try:
+            bscan_locations = self.get_bscan_enface_locations()
+        except (AttributeError, TypeError):
+            bscan_locations = None
+
+        # Fall back to simple volume viewer if no enface or positions
+        if enface_image is None or bscan_locations is None:
+            return image_array_display_widget(annotated_images, width=640, height=320)
+
+        return oct_display_widget(annotated_images, enface_image, bscan_locations, width=640, height=320, enface_size=320)

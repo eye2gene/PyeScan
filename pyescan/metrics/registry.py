@@ -1,7 +1,6 @@
 import ast
-from inspect import signature, Parameter, getsource
-from typing import Annotated, Any, Callable, Dict, List, Literal, Optional, Tuple, TypeVar, Union
-from typing import get_type_hints
+from inspect import Parameter, getsource, signature
+from typing import Annotated, Any, Callable, Dict, List, Optional, TypeVar, get_type_hints
 
 from .metric import Metric
 

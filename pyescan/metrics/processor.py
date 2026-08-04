@@ -1,5 +1,5 @@
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union 
 import re
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from .metric import Metric
 
@@ -10,21 +10,25 @@ class MetricProcessor:
     def __init__(self, metrics: List[Metric]):
         self.metrics = {m.name: m for m in metrics}
         
-    def _stat_exists(self, stat: str, entry_data: Any, cache: Dict[str,Any] = {}) -> bool:
-        if stat in entry_data:
-            return True
-        elif stat in cache.get('computed_stats',{}):
+    def _stat_exists(self, stat: str, entry_data: Any, cache: Optional[Dict[str,Any]] = None) -> bool:
+        if cache is None:
+            cache = {}
+        if stat in entry_data or stat in cache.get('computed_stats',{}):
             return True
         return False
     
-    def _get_stat(self, stat: str, entry_data: Any, cache: Dict[str,Any] = {}) -> Any:
+    def _get_stat(self, stat: str, entry_data: Any, cache: Optional[Dict[str,Any]] = None) -> Any:
+        if cache is None:
+            cache = {}
         if stat in entry_data:
             return entry_data[stat]
-        elif stat in cache['computed_stats']:
+        elif stat in cache.get('computed_stats', {}):
             return cache['computed_stats'][stat]
         raise ValueError(f"A method tried to get {stat} from entry, but it was not found!\n\n Entry:\n{entry_data}\n\nCache:\n{cache}")
 
-    def _process_metric(self, entry_data: Any, metric: Metric, params: Dict[str,Any] = {}, cache: Optional[Dict[str,Any]] = None) -> Dict[str,Any]:
+    def _process_metric(self, entry_data: Any, metric: Metric, params: Optional[Dict[str,Any]] = None, cache: Optional[Dict[str,Any]] = None) -> Dict[str,Any]:
+        if params is None:
+            params = {}
         cache = cache or {}
         
         # Check if all returns already exist
@@ -82,12 +86,16 @@ class MetricProcessor:
     def get_metric_by_stat(self, stat: str) -> tuple[Optional[Metric], Optional[Dict[str,Any]]]:
         return self._resolve_dependency_stat(self._resolve_template(stat))
         
-    def _generate_return_names(self, metric: Metric, params: Dict[str,Any] = {}) -> List[str]:
+    def _generate_return_names(self, metric: Metric, params: Optional[Dict[str,Any]] = None) -> List[str]:
+        if params is None:
+            params = {}
         return_names = [ self._resolve_template(template, params)
                          for template in metric.returns_template ]
-        return [ name for name in return_names if not name is None ]
+        return [ name for name in return_names if name is not None ]
     
-    def _resolve_template(self, template: str, params: Dict[str,Any] = {}) -> str:
+    def _resolve_template(self, template: str, params: Optional[Dict[str,Any]] = None) -> str:
+        if params is None:
+            params = {}
         # Get rid of prefix
         template = template.split(":",1)[-1]
         
@@ -104,9 +112,9 @@ class MetricProcessor:
     
     def _try_get_param_type(self, param_pattern):
         if param_pattern == "int":
-            return '\b(-?\d+)\b'
+            return '\b(-?\\d+)\b'
         elif param_pattern == "float":
-            return '(-?\d+(?:\.\d+)?)'
+            return r'(-?\d+(?:\.\d+)?)'
         elif param_pattern == "str":
             return '([A-Za-z]+)'
         else:
@@ -124,7 +132,6 @@ class MetricProcessor:
         # First create a regex pattern from the template
         regex_pattern = "^"  # Start of string
         param_names = []
-        current_pos = 0
 
         # Find all parameters and optional sections
         parts = []

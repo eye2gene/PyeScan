@@ -1,6 +1,8 @@
+from typing import Any, List
+
 import numpy as np
 from numpy.typing import NDArray
-from typing import Any, List
+
 
 def _stack_arrays_with_empties(array_list: List[NDArray], default_value: float = 0) -> NDArray:
     # Get shape from first non-None array
@@ -28,7 +30,7 @@ def _pad_array(data: NDArray, n: int) -> NDArray: # TODO Axis
         
     return result
 
-class ArrayView():
+class ArrayView:
     # Helper wrapper class for lists of objects which can be converted to data
     def __init__(self, items: List[Any]):
         self._items_list = items
@@ -66,10 +68,10 @@ class ArrayView():
         return iter(self._items())
     
     def __str__(self):
-        return f"{self.__class__.__name__}({str(self._items())})"
+        return f"{self.__class__.__name__}({self._items()!s})"
     
     def __repr__(self):
-        return f"{self.__class__.__name__}({repr(self._items())})"
+        return f"{self.__class__.__name__}({self._items()!r})"
     
     @property
     def data(self) -> NDArray:

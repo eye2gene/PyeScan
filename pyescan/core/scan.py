@@ -1,11 +1,13 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
-from cached_property import cached_property
+from abc import ABCMeta, abstractmethod
+from functools import cached_property
+from typing import Dict, Optional
+
 from numpy.typing import NDArray
-from typing import Any, Dict, List, Union, Optional
 
 from .annotation import Annotation
 from .image import BaseImage
 from .metadata import MetadataView
+
 
 class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclass itself
     def __init__(self,
@@ -13,7 +15,7 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
                  parent: "BaseScan" = None,
                  *args, **kwargs):
         self._record = None
-        self._group_id = None # This should uniquely identify the high-level scan within the record
+        #self._group_id = None # This should uniquely identify the high-level scan within the record
         
         self._metadata = metadata # MetadataView onto a record
 
@@ -22,7 +24,7 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
         self._parent = parent
     
     def __repr__(self):
-        return self.__class__.__name__
+        return f"{self.__class__.__name__}(source_id={self.source_id})"
 
     def __str__(self):
         return str(self.__repr__())
@@ -54,9 +56,14 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
         raise NotImplementedError()
         
     def add_annotation(self, feature_name: str, annotation: Annotation, color=None) -> None:
-        annotation._scan = self
-        if not color is None:
-            annotation._color = color
+        annotation.feature_name = feature_name
+        if color is not None:
+            annotation.color = color
+        if hasattr(self, 'source_id'):
+            try:
+                annotation.source_id = annotation.source_id or self.source_id
+            except Exception:
+                pass
         self._annotations[feature_name] = annotation
         
     def add_annotations(self, annotation_dict: Dict[str,Annotation]) -> None:
@@ -70,11 +77,13 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
     def annotations(self) -> Dict[str, Annotation]:
         return self._annotations
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def image(self) -> BaseImage:
         raise NotImplementedError()
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def data(self) -> NDArray:
         raise NotImplementedError()
         

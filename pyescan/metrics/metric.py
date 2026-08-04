@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, List, Optional 
+from typing import Any, Callable, Dict, List, Optional
+
 
 class Metric:
     def __init__(self, name: str,
