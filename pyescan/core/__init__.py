@@ -12,7 +12,7 @@ from .image import (
 )
 from .metadata import MetadataParser, MetadataRecord, MetadataView
 from .scan import BaseScan, SingleImageScan
-from .scan_building import ScanBuildError, build_from_metadata
+from .scan_building import ScanBuildError, build_from_metadata, resolve_loader
 from .scan_enface import ColorFundusScan, EnfaceScan, FAFScan, IRScan
 from .scan_oct import BScan, BScanArray, OCTScan
 
@@ -44,5 +44,6 @@ __all__ = [
     "build_from_metadata",
     "file_loader",
     "generator_loader",
+    "resolve_loader",
     "url_loader",
 ]

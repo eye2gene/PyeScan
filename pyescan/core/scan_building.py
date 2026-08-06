@@ -1,6 +1,9 @@
 import logging
+from typing import Callable, Optional
 
-from pyescan.core.image import LazyImage
+from PIL import Image as PILImage
+
+from pyescan.core.image import LazyImage, file_loader, url_loader
 from pyescan.core.scan_enface import FAFScan, IRScan
 from pyescan.core.scan_oct import BScan, BScanArray, OCTScan
 
@@ -9,6 +12,25 @@ logger = logging.getLogger(__name__)
 KNOWN_MODALITIES = {
     'OCT', 'SLO - Infrared', 'AF - Blue', 'Color Fundus',
 }
+
+# Type alias: a function that takes a location string and returns a loader callable
+ImageLoaderFactory = Callable[[str], Callable[[], PILImage.Image]]
+
+
+def resolve_loader(location: str, mode: Optional[str] = None) -> Callable[[], PILImage.Image]:
+    """
+    Pick a loader based on the URI scheme of the location string.
+
+    Supports:
+    - http:// / https:// -> url_loader
+    - Local file paths (default) -> file_loader
+
+    Extend this function to add support for s3://, gs://, etc.
+    """
+    if location.startswith(('http://', 'https://')):
+        return url_loader(location, mode)
+    else:
+        return file_loader(location, mode)
 
 
 class ScanBuildError(Exception):
@@ -30,7 +52,10 @@ def _get_metadata_attr(meta, attr_name, context=""):
         ) from e
 
 
-def build_oct_from_metadata(oct_meta, enface_meta=None):
+def build_oct_from_metadata(oct_meta, enface_meta=None, image_loader=None):
+    if image_loader is None:
+        image_loader = resolve_loader
+
     source_id = _get_metadata_attr(oct_meta, 'source_id', context="OCT scan")
 
     if enface_meta:
@@ -38,7 +63,7 @@ def build_oct_from_metadata(oct_meta, enface_meta=None):
             enface_meta, 'image_location',
             context=f"enface for OCT source_id={source_id}"
         )
-        enface_img = LazyImage(enface_img_path)
+        enface_img = LazyImage(loader=image_loader(enface_img_path))
         enface = IRScan(image=enface_img, metadata=enface_meta)
     else:
         enface = None
@@ -65,7 +90,7 @@ def build_oct_from_metadata(oct_meta, enface_meta=None):
             bscan_meta, 'image_location',
             context=f"B-scan index {i} of OCT source_id={source_id}"
         )
-        bscan_img = LazyImage(bscan_img_path)
+        bscan_img = LazyImage(loader=image_loader(bscan_img_path))
         bscan = BScan(bscan_img, i, bscan_meta)
         bscans.append(bscan)
 
@@ -74,29 +99,35 @@ def build_oct_from_metadata(oct_meta, enface_meta=None):
     return scan
 
 
-def build_faf_from_metadata(scan_meta):
+def build_faf_from_metadata(scan_meta, image_loader=None):
+    if image_loader is None:
+        image_loader = resolve_loader
+
     source_id = _get_metadata_attr(scan_meta, 'source_id', context="FAF scan")
     scan_img_path = _get_metadata_attr(
         scan_meta, 'image_location',
         context=f"FAF scan source_id={source_id}"
     )
-    scan_img = LazyImage(scan_img_path)
+    scan_img = LazyImage(loader=image_loader(scan_img_path))
     scan = FAFScan(image=scan_img, metadata=scan_meta)
     return scan
 
 
-def build_ir_from_metadata(scan_meta):
+def build_ir_from_metadata(scan_meta, image_loader=None):
+    if image_loader is None:
+        image_loader = resolve_loader
+
     source_id = _get_metadata_attr(scan_meta, 'source_id', context="IR scan")
     scan_img_path = _get_metadata_attr(
         scan_meta, 'image_location',
         context=f"IR scan source_id={source_id}"
     )
-    scan_img = LazyImage(scan_img_path)
+    scan_img = LazyImage(loader=image_loader(scan_img_path))
     scan = IRScan(image=scan_img, metadata=scan_meta)
     return scan
 
 
-def build_from_metadata(metadata):
+def build_from_metadata(metadata, image_loader=None):
     """
     Build scan objects from a top-level MetadataView.
 
@@ -110,6 +141,10 @@ def build_from_metadata(metadata):
     ----------
     metadata : MetadataView
         Top-level metadata view with a configured parser.
+    image_loader : callable, optional
+        A factory function that takes a location string (file path, URL, etc.)
+        and returns a loader callable for LazyImage. Defaults to resolve_loader
+        which auto-detects based on URI scheme.
 
     Returns
     -------
@@ -153,27 +188,27 @@ def build_from_metadata(metadata):
         try:
             if modalities == ['SLO - Infrared', 'OCT']:
                 ir_meta, oct_meta = group
-                scan = build_oct_from_metadata(oct_meta, ir_meta)
+                scan = build_oct_from_metadata(oct_meta, ir_meta, image_loader=image_loader)
                 scans.append(scan)
                 
             elif modalities == ['OCT', 'SLO - Infrared']:
                 oct_meta, ir_meta = group
-                scan = build_oct_from_metadata(oct_meta, ir_meta)
+                scan = build_oct_from_metadata(oct_meta, ir_meta, image_loader=image_loader)
                 scans.append(scan)
                 
             elif modalities == ['OCT']:
                 oct_meta = group[0]
-                scan = build_oct_from_metadata(oct_meta, None)
+                scan = build_oct_from_metadata(oct_meta, None, image_loader=image_loader)
                 scans.append(scan)
                 
             elif modalities == ['AF - Blue']:
                 scan_meta = group[0]
-                scan = build_faf_from_metadata(scan_meta)
+                scan = build_faf_from_metadata(scan_meta, image_loader=image_loader)
                 scans.append(scan)
                 
             elif modalities == ['SLO - Infrared']:
                 scan_meta = group[0]
-                scan = build_ir_from_metadata(scan_meta)
+                scan = build_ir_from_metadata(scan_meta, image_loader=image_loader)
                 scans.append(scan)
                 
             else:
