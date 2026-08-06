@@ -53,7 +53,8 @@ def run_on_dataframe(df,
                      auto_merge: bool = False,
                      named_only: bool = False,
                      metric_list: Optional[List[Metric]] = None,
-                     threaded: bool = False):
+                     threaded: bool = False,
+                     n_workers: Optional[int] = None):
     
     if col_mapping is None:
         col_mapping = {}
@@ -92,8 +93,10 @@ def run_on_dataframe(df,
     
     results = []
     if threaded:
+        import os
         from pathos.multiprocessing import Pool
-        with Pool(64) as p:
+        pool_size = n_workers or os.cpu_count() or 4
+        with Pool(pool_size) as p:
             results = list(tqdm.tqdm(p.imap(process_row, df.iterrows()), total=len(df)))
     else:
         results = list()
