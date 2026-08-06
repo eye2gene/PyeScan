@@ -367,7 +367,7 @@ class MaskVolume(ArrayView):
     @property
     def images(self):
         from .image import ImageVolume
-        return ImageVolume([mask.image for mask in self._masks])
+        return ImageVolume(images=self._masks)
 
     @property
     def data(self) -> NDArray:

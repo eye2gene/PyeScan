@@ -203,6 +203,24 @@ class LazyImage(BaseImage):
         img = self.image
         return img.size if img else None
 
+    def convert(self, mode: str) -> PILImage.Image:
+        """Convert to a PIL Image with the given mode. Triggers load."""
+        return self.image.convert(mode)
+
+    def copy(self) -> PILImage.Image:
+        """Return a copy of the underlying PIL Image. Triggers load."""
+        return self.image.copy()
+
+    def resize(self, size, resample=None) -> PILImage.Image:
+        """Resize and return a PIL Image. Triggers load."""
+        if resample is not None:
+            return self.image.resize(size, resample)
+        return self.image.resize(size)
+
+    def save(self, fp, format=None, **kwargs) -> None:
+        """Save the image to file. Triggers load."""
+        self.image.save(fp, format=format, **kwargs)
+
     # ------------------------------------------------------------------
     # Representations
     # ------------------------------------------------------------------

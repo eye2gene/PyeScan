@@ -6,7 +6,7 @@ from numpy.typing import NDArray
 from PIL import Image as PILImage
 from skimage.transform import ProjectiveTransform, warp
 
-from .image import BaseImage, ImageVolume
+from .image import ImageVolume
 from .scan import BaseScan, SingleImageScan
 from .scan_enface import EnfaceScan
 from .utils import ArrayView, _pad_array
@@ -22,7 +22,7 @@ class BScan(SingleImageScan):
     """
     Class for single OCT b-scan
     """
-    def __init__(self, image: BaseImage, bscan_index: int, *args, **kwargs):
+    def __init__(self, image, bscan_index: int, *args, **kwargs):
         super().__init__(image, *args, **kwargs)
         self._scan_index = bscan_index
 
@@ -49,7 +49,7 @@ class BScanArray(ArrayView):
 
     @property
     def images(self) -> ImageVolume:
-        return ImageVolume([bscan.image for bscan in self._bscans])
+        return ImageVolume([bscan._img_source for bscan in self._bscans])
     
     
 class OCTScan(BaseScan):
@@ -93,7 +93,7 @@ class OCTScan(BaseScan):
         self._bscans.unload()
         
     @property
-    def image(self) -> BaseImage:
+    def image(self) -> PILImage.Image:
         return self._enface.image
     
     @property
