@@ -1,265 +1,35 @@
+"""
+CrystalEye/PrivateEye scan loading functions.
+
+This module provides the public API for loading retinal scans from
+CrystalEye JSON exports and pandas DataFrames.
+"""
+import json
 import logging
 import os
 
-from pyescan.core.metadata import MetadataParserCSV, MetadataParserJSON, MetadataRecord
-from pyescan.core.scan_building import build_from_metadata
+from .core.metadata import MetadataRecord
+from .core.scan_building import build_from_metadata
+from .parsers import CrystalEyeParser, CrystalEyeParserCSV
+from .validation import validate_scan_dataframe
 
 logger = logging.getLogger(__name__)
 
-"""
 
-HEYEX example format (output of privateEye)
-
-OCT:
-- patient
-- exam
-- series
-- images
-  - Image 0
-    - Source ID
-    - modality
-    - group
-    - size
-    - ...
-    - contents
-    - extras
-    - contours
-  - Image 1
-    - Source ID
-    - modality
-    - group
-    - size
-    - ...
-    - contents
-      - 1
-      - 2
-      - ...
-    - extras
-    - contours
-- debug
-- parser version
-
-Proposed Taxonomy:
-0. (Patient)
-1. Record - i.e. a single sdb/sda/e2e file
-2. Scan group (usually OCT + enface, there may be just one of these per record, but sometimes multiple scan-groups are captured in a single record in which case they are given different group ids)
-3. Scan (in the privateeye/crystaleye this is represented by each 'image' entry)
-4. Image (usually 1 per scan, except for OCT scans whre there are multiple)
-
-
-Scan / scan grp (volume) / scan image
-Scan metadata
-Mask (single image)
-Mask volume
-Fovea (prediction)
-Registration projection
-Classification output
-Dataset
-Model
-
-"""
-
-
-def _validate_dataframe_integrity(df, identity_col=None, bscan_index_col='bscan_index',
-                                  source_id_col='source_id', modality_col='modality',
-                                  n_images_col='number_of_images'):
+def load_record_from_json_CE(metadata_file_path, format=None):
     """
-    Validate a scan DataFrame for completeness and uniqueness.
-
-    Checks:
-    - No duplicate B-scan indices within each source_id
-    - B-scan indices form a complete sequence (0..n-1) for OCT modalities
-    - Expected number of images matches actual count (if n_images column present)
+    Load scan records from a CrystalEye JSON metadata file.
 
     Parameters
     ----------
-    df : pd.DataFrame
-        The scan DataFrame to validate.
-    identity_col : str, optional
-        Column identifying each volume/record for clearer error messages.
-        If None, source_id_col is used as the identity.
-    bscan_index_col : str
-        Column containing B-scan indices.
-    source_id_col : str
-        Column containing the source/scan identifier.
-    modality_col : str
-        Column containing the modality string.
-    n_images_col : str
-        Column containing the expected number of images.
+    metadata_file_path : str
+        Path to the metadata.json file or the directory containing it.
 
-    Raises
-    ------
-    ValueError
-        If duplicates or missing B-scans are detected, with details of which
-        identity/source_id the problem occurred at.
+    Returns
+    -------
+    list[BaseScan]
+        List of scan objects built from the metadata.
     """
-    errors = []
-
-    id_col = identity_col or source_id_col
-
-    # Check columns exist before validating
-    if source_id_col not in df.columns:
-        return  # Can't validate without source_id
-    if bscan_index_col not in df.columns:
-        return  # No bscan index to validate
-
-    for group_id, df_group in df.groupby(source_id_col):
-        identity_label = group_id
-        if identity_col and identity_col in df.columns and identity_col != source_id_col:
-            identity_values = df_group[identity_col].unique()
-            identity_label = f"{id_col}={identity_values[0]}, {source_id_col}={group_id}"
-
-        # Skip non-OCT modalities for completeness checks (they have 1 image)
-        is_oct = False
-        if modality_col in df.columns:
-            modalities = df_group[modality_col].unique()
-            is_oct = any('OCT' in str(m) for m in modalities)
-
-        # --- Uniqueness check: duplicate bscan indices ---
-        if bscan_index_col in df_group.columns:
-            bscan_indices = df_group[bscan_index_col].dropna()
-            if len(bscan_indices) > 0:
-                duplicates = bscan_indices[bscan_indices.duplicated()]
-                if len(duplicates) > 0:
-                    dup_values = sorted(duplicates.unique().tolist())
-                    errors.append(
-                        f"[{identity_label}] Duplicate B-scan indices found: {dup_values}. "
-                        f"Each B-scan index must be unique within a scan."
-                    )
-
-        # --- Completeness check (OCT only): contiguous 0..n-1 ---
-        if is_oct and bscan_index_col in df_group.columns:
-            bscan_indices = df_group[bscan_index_col].dropna()
-            if len(bscan_indices) > 0:
-                try:
-                    indices = sorted(bscan_indices.astype(int).tolist())
-                except (ValueError, TypeError):
-                    continue
-
-                expected = list(range(len(indices)))
-                # Check if expected count matches n_images metadata
-                if n_images_col in df_group.columns:
-                    n_expected_values = df_group[n_images_col].dropna().unique()
-                    if len(n_expected_values) > 0:
-                        try:
-                            n_expected = int(n_expected_values[0])
-                            if len(indices) != n_expected:
-                                errors.append(
-                                    f"[{identity_label}] Expected {n_expected} B-scans "
-                                    f"(from '{n_images_col}' column) but found {len(indices)}."
-                                )
-                        except (ValueError, TypeError):
-                            pass
-
-                # Check for gaps in the sequence
-                if indices != expected:
-                    missing = sorted(set(expected) - set(indices))
-                    extra = sorted(set(indices) - set(range(max(indices) + 1)))
-                    msg_parts = []
-                    if missing:
-                        # Only show first 10 to keep messages readable
-                        shown = missing[:10]
-                        msg_parts.append(f"missing indices {shown}{'...' if len(missing) > 10 else ''}")
-                    if extra:
-                        shown = extra[:10]
-                        msg_parts.append(f"unexpected indices {shown}{'...' if len(extra) > 10 else ''}")
-                    if msg_parts:
-                        errors.append(
-                            f"[{identity_label}] B-scan indices are not a complete 0..{len(indices)-1} sequence: "
-                            f"{', '.join(msg_parts)}."
-                        )
-
-    if errors:
-        raise ValueError(
-            f"Data integrity check failed with {len(errors)} issue(s):\n" +
-            "\n".join(f"  • {e}" for e in errors)
-        )
-
-
-class CrystalEyeParser(MetadataParserJSON):
-    _scan_level = ["images", "images", "{scan_number}"]
-    _image_level = _scan_level + ["contents", "{image_number}"]
-    
-    _path_map = {
-        "group": _scan_level + ["group"],
-        "source_id": _scan_level + ["source_id"],
-        "modality": _scan_level + ["modality"],
-        "manufacturer": _scan_level + ["manufacturer"],
-        
-        "bscan_start_x": _image_level + ["photo_locations", 0, "start", "x"],
-        "bscan_start_y": _image_level + ["photo_locations", 0, "start", "y"],
-        "bscan_end_x": _image_level + ["photo_locations", 0, "end", "x"],
-        "bscan_end_y": _image_level + ["photo_locations", 0, "end", "y"],
-    }
-    
-    def __init__(self):
-        self._overrides = {
-            "n_scans": self.n_scans,
-            "n_images": self.n_images,
-            "image_location": self.image_location
-        }
-    
-    def n_scans(self, metadata_record, view_info):
-        path = self._map_path(self._scan_level[:-1], view_info)
-        return len(self._get_by_path(metadata_record, path))
-    
-    def n_images(self, metadata_record, view_info):
-        path = self._map_path(self._image_level[:-1], view_info)
-        return len(self._get_by_path(metadata_record, path))
-
-    def image_location(self, metadata_record, view_info):
-        modality = self.get_value('modality', metadata_record, view_info)
-        bscan_index = view_info['image_number'] if 'OCT' in modality else 0
-        source_id = self.get_value('source_id', metadata_record, view_info)
-        
-        file_name = f"{source_id}_{bscan_index}.png"
-        return os.path.join(metadata_record.location, file_name)
-
-    
-class CrystalEyeParserCSV(MetadataParserCSV):
-    _base_col_map = {
-        "n_images": "number_of_images",
-        "group": "group",
-        "source_id": "source_id",
-        "modality": "modality",
-        "image_location": "file_path",
-        
-        "bscan_start_x": "bscan_location_start_x",
-        "bscan_start_y": "bscan_location_start_y",
-        "bscan_end_x": "bscan_location_end_x",
-        "bscan_end_y": "bscan_location_end_y",
-    }
-    
-    def __init__(self, column_headings=None):
-        self._col_map = self._base_col_map.copy()
-        if column_headings:
-            self._col_map.update(column_headings)
-        self._overrides = { "n_scans": self.n_scans }
-        
-    def _get_records_subset(self, metadata_record, view_info):
-        df = metadata_record.raw
-        if "scan_number" in view_info:
-            scan_number = metadata_record.raw.source_id.unique()[view_info["scan_number"]]  # noqa: F841
-            df = df.query("source_id == @scan_number")
-        if "image_number" in view_info:
-            image_number = view_info["image_number"]
-            # Coerce to match column dtype (DataFrame may have strings from CSV)
-            if "bscan_index" in df.columns and len(df) > 0:
-                col_dtype = df["bscan_index"].dtype
-                if col_dtype == object:  # string column
-                    image_number = str(image_number)  # noqa: F841
-                else:
-                    image_number = col_dtype.type(image_number)  # noqa: F841
-            df = df.query("bscan_index == @image_number")
-        return df
-    
-    def n_scans(self, metadata_record, view_info):
-        #records_subset = self._get_records_subset(metadata_record, view_info)
-        return metadata_record.raw.source_id.nunique()
-    
-def load_record_from_json_CE(metadata_file_path, format=None):
-    
-    import json
     file_path = metadata_file_path
     if not file_path.endswith(".json"):
         file_path = os.path.join(file_path, "metadata.json")
@@ -295,17 +65,32 @@ def load_record_from_json_CE(metadata_file_path, format=None):
     metadata = record.get_view(parser=CrystalEyeParser())
     return build_from_metadata(metadata)
 
-def load_record_from_CE(path_to_record_folder, format=None):
 
+def load_record_from_CE(path_to_record_folder, format=None):
+    """
+    Load scan records from a CrystalEye export folder (containing metadata.json).
+
+    Parameters
+    ----------
+    path_to_record_folder : str
+        Path to the sdb folder or directly to a metadata.json file.
+
+    Returns
+    -------
+    list[BaseScan]
+        List of scan objects built from the metadata.
+    """
     file_path = path_to_record_folder
     if not file_path.endswith(".json"):
         file_path = os.path.join(file_path, "metadata.json")
 
     return load_record_from_json_CE(file_path, format=format)
 
+
 def load_records_from_CE(path_to_records_folder, folder_structure="{pat}/{sdb}/metadata.json"):
+    """Load multiple records from a CrystalEye export folder structure."""
     raise NotImplementedError()
-    
+
 
 def load_record_from_df(df_scan, column_headings=None, identity_col=None, validate=True):
     """
@@ -352,14 +137,6 @@ def load_record_from_df(df_scan, column_headings=None, identity_col=None, valida
         )
 
     # Validate required columns are present
-    # These are the minimum columns needed for scan building:
-    #   source_id - identifies each scan, used for grouping
-    #   group     - groups scans (e.g. OCT + enface together)
-    #   modality  - determines which builder to use
-    # For OCT scans, also needed (checked below):
-    #   n_images (number_of_images) - how many bscans
-    #   image_location (file_path)  - where images are
-    #   bscan_index                 - identifies each bscan row (used in subsetting)
     parser = CrystalEyeParserCSV(column_headings=column_headings)
 
     required_for_structure = ('source_id', 'modality', 'group')
@@ -433,22 +210,23 @@ def load_record_from_df(df_scan, column_headings=None, identity_col=None, valida
     if validate:
         source_id_col = parser._col_map.get('source_id', 'source_id')
         bscan_index_col = column_headings.get('bscan_index', 'bscan_index')
-        modality_col = parser._col_map.get('modality', 'modality')
+        modality_col_name = parser._col_map.get('modality', 'modality')
         n_images_col = parser._col_map.get('n_images', 'number_of_images')
 
-        _validate_dataframe_integrity(
+        validate_scan_dataframe(
             df_scan,
             identity_col=identity_col,
             bscan_index_col=bscan_index_col,
             source_id_col=source_id_col,
-            modality_col=modality_col,
+            modality_col=modality_col_name,
             n_images_col=n_images_col,
         )
 
     record = MetadataRecord(df_scan)
     metadata = record.get_view(parser=parser)
-            
+
     return build_from_metadata(metadata)
+
 
 def load_records_from_df(df, column_headings=None, identifier_columns=None,
                          identity_col=None, validate=True):
@@ -469,8 +247,6 @@ def load_records_from_df(df, column_headings=None, identifier_columns=None,
     identity_col : str, optional
         Column that uniquely identifies each volume within a record group.
         Passed through to load_record_from_df for per-record validation.
-        This prevents collisions when a single record group contains multiple
-        volumes (e.g. multiple source_ids).
     validate : bool, default True
         Whether to run completeness and uniqueness checks. Set to False to bypass.
 
@@ -507,5 +283,5 @@ def load_records_from_df(df, column_headings=None, identifier_columns=None,
             validate=validate,
         )
         for i, scan in enumerate(scan_set):
-            scans[(*identifier,i)] = scan
+            scans[(*identifier, i)] = scan
     return scans
