@@ -6,7 +6,10 @@ from .annotation import (
     Annotation, AnnotationSlice, AnnotationVolume,
     AnnotationEnface, AnnotationOCT, MaskImage, MaskVolume, ModelInfo,
 )
-from .image import BaseImage, ImageVolume, LazyImage
+from .image import (
+    BaseImage, ImageVolume, LazyImage,
+    file_loader, generator_loader, url_loader,
+)
 from .metadata import MetadataParser, MetadataRecord, MetadataView
 from .scan import BaseScan, SingleImageScan
 from .scan_building import ScanBuildError, build_from_metadata
@@ -39,4 +42,7 @@ __all__ = [
     "ScanBuildError",
     "SingleImageScan",
     "build_from_metadata",
+    "file_loader",
+    "generator_loader",
+    "url_loader",
 ]
