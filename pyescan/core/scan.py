@@ -1,12 +1,18 @@
+from __future__ import annotations
+
 from abc import ABCMeta, abstractmethod
 from functools import cached_property
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from numpy.typing import NDArray
 
 from .annotation import Annotation
-from .image import BaseImage
 from .metadata import MetadataView
+
+if TYPE_CHECKING:
+    from PIL import Image as PILImage
+
+    from .image import LazyImage
 
 
 class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclass itself
@@ -79,7 +85,7 @@ class BaseScan(metaclass=ABCMeta): # We could probably make this into a metaclas
 
     @property
     @abstractmethod
-    def image(self) -> BaseImage:
+    def image(self) -> "PILImage.Image":
         raise NotImplementedError()
 
     @property
@@ -125,36 +131,37 @@ class SingleImageScan(BaseScan):
     """
     Base class for scan as a single image / bscan
     """
-    def __init__(self, image: BaseImage, *args, **kwargs):
+    def __init__(self, image: "LazyImage", *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._image = image
+        self._img_source = image
         
     def _repr_png_(self):
-        return self._image._repr_png_()
+        return self._img_source._repr_png_()
     
     def __array__(self):
-        return self._image.data
+        return self._img_source.data
       
     @property
-    def image(self) -> BaseImage:
-        return self._image
+    def image(self) -> "PILImage.Image":
+        """The PIL Image for this scan (loaded on first access)."""
+        return self._img_source.image
     
     @property
     def data(self) -> NDArray:
-        return self._image.data
+        return self._img_source.data
     
     @property
     def shape(self): #TODO: Type annotation
-        return self._image.data.shape
+        return self._img_source.data.shape
     
     def plot_image(self, include_annotations=False):
         raise NotImplementedError()
     
     def preload(self) -> None:
-        self._image.load()
+        self._img_source.load()
     
     def unload(self) -> None:
-        self._image.unload()
+        self._img_source.unload()
 
     
     

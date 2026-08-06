@@ -1,4 +1,21 @@
-from typing import Any, List, Optional
+"""
+Image classes for PyeScan.
+
+Design:
+- BaseImage: ABC defining the interface all image types must satisfy (.data, .image)
+- LazyImage: Lazy-loading image backed by a pluggable loader callable.
+- ImageVolume: ArrayView of BaseImage instances (indexable, sliceable, stackable).
+
+Loader factories (file_loader, url_loader, generator_loader) decouple the
+loading strategy from the caching shell so new sources can be added without
+modifying LazyImage.
+"""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Callable, List, Optional, Union
 
 import numpy as np
 from numpy.typing import NDArray
@@ -7,79 +24,249 @@ from PIL import Image as PILImage
 from .utils import ArrayView
 
 
-class BaseImage:
-    pass #TODO make this an ABC
+# ---------------------------------------------------------------------------
+# Loader factories
+# ---------------------------------------------------------------------------
+
+def file_loader(path: Union[str, Path], mode: Optional[str] = None) -> Callable[[], PILImage.Image]:
+    """Create a loader that reads from a local file path."""
+    path = Path(path)
+
+    def _load() -> PILImage.Image:
+        img = PILImage.open(path)
+        img.load()  # force full read so file handle is released
+        return img.convert(mode) if mode else img
+
+    _load.__repr__ = lambda: f"file_loader({path})"  # noqa: E731
+    return _load
+
+
+def url_loader(url: str, mode: Optional[str] = None) -> Callable[[], PILImage.Image]:
+    """Create a loader that fetches an image from a URL."""
+    import urllib.request
+    from io import BytesIO
+
+    def _load() -> PILImage.Image:
+        with urllib.request.urlopen(url) as resp:
+            img = PILImage.open(BytesIO(resp.read()))
+            img.load()
+        return img.convert(mode) if mode else img
+
+    _load.__repr__ = lambda: f"url_loader({url})"  # noqa: E731
+    return _load
+
+
+def generator_loader(
+    func: Callable[[], NDArray], mode: Optional[str] = None
+) -> Callable[[], PILImage.Image]:
+    """Create a loader from a callable that returns a numpy array."""
+
+    def _load() -> PILImage.Image:
+        arr = func()
+        img = PILImage.fromarray(arr)
+        return img.convert(mode) if mode else img
+
+    _load.__repr__ = lambda: f"generator_loader({func})"  # noqa: E731
+    return _load
+
+
+# ---------------------------------------------------------------------------
+# Base class
+# ---------------------------------------------------------------------------
+
+class BaseImage(ABC):
+    """Abstract base for all image types in PyeScan."""
+
+    @property
+    @abstractmethod
+    def data(self) -> NDArray:
+        """Pixel data as a numpy array."""
+        ...
+
+    def __array__(self) -> NDArray:
+        return self.data
+
+
+# ---------------------------------------------------------------------------
+# LazyImage
+# ---------------------------------------------------------------------------
 
 class LazyImage(BaseImage):
     """
-    Holder for single image to enable lazy loading
-    """
-    def __init__(self, file_path: str = None, mode: str = None, raw_image: PILImage.Image = None):
-        self._source_type = None # For future use to manage different types of loading
-        self._file_location = file_path
-        
-        self._color_mode = mode
-        
-        # Set initial params
-        self._raw_image: Optional[PILImage] = raw_image
-        self._image: Optional[PILImage] = None
-        
-        self.loaded = False # Currently checking for _image is None
+    Lazy-loading image backed by a pluggable loader callable.
 
-    def __getattr__(self, attr: str) -> Any:
-        # Pass through other calls to underlying image
-        return getattr(self.image, attr)
-    
-    def __array__(self):
-        return self.data
-    
-    def _repr_png_(self):
-        return self.image._repr_png_()
-    
-    def load(self, force: bool = False) -> None:
-        #TODO: add proper debug logging
-        #print("Loaded image", self._file_location)
-        if self._file_location:
-            self._raw_image = PILImage.open(self._file_location)
-        self._image = self._raw_image
-        if self._color_mode:
-            self._image = self._image.convert(mode=self._color_mode)
-        self.loaded = True
-        
-    def reload(self) -> None:
-        # Forces reload
-        self.load(force=True)
-        
+    The loader is invoked on first access to `.image` or `.data`. Call
+    `.unload()` to release memory; the next access will re-invoke the loader.
+
+    Construction
+    ------------
+    Preferred (explicit loader):
+        LazyImage(loader=file_loader("scan.png"))
+
+    Convenience shortcuts (construct the loader internally):
+        LazyImage(file_path="scan.png")
+        LazyImage(file_path="scan.png", mode="L")
+        LazyImage(url="https://example.com/retina.png")
+        LazyImage(raw_image=pil_img)
+
+    Custom loader:
+        LazyImage(loader=my_dicom_loader)
+    """
+
+    def __init__(
+        self,
+        file_path: Optional[Union[str, Path]] = None,
+        mode: Optional[str] = None,
+        raw_image: Optional[PILImage.Image] = None,
+        *,
+        loader: Optional[Callable[[], PILImage.Image]] = None,
+        url: Optional[str] = None,
+    ):
+        if loader is not None:
+            self._loader = loader
+        elif file_path is not None:
+            self._loader = file_loader(file_path, mode)
+        elif url is not None:
+            self._loader = url_loader(url, mode)
+        elif raw_image is not None:
+            # Already in memory — wrap in a trivial loader that returns a copy
+            converted = raw_image.convert(mode) if mode else raw_image
+            self._loader: Optional[Callable[[], PILImage.Image]] = lambda: converted.copy()
+        else:
+            # Empty sentinel (used e.g. by annotation code for placeholder slots)
+            self._loader = None
+
+        self._image: Optional[PILImage.Image] = None
+
+        # Keep for backward-compat introspection (used by MaskImage, annotation code)
+        self._file_location = str(file_path) if file_path else None
+        self._raw_image = raw_image
+
+    # ------------------------------------------------------------------
+    # Loading interface
+    # ------------------------------------------------------------------
+
+    @property
+    def loaded(self) -> bool:
+        """True if the image is currently held in memory."""
+        return self._image is not None
+
+    def load(self) -> None:
+        """Load (or reload) the image into memory."""
+        if self._loader is None:
+            raise ValueError("No loader configured for this LazyImage.")
+        self._image = self._loader()
+
     def unload(self) -> None:
+        """Release the in-memory image. Can be reloaded later if a loader exists."""
         if self._image is not None:
             self._image.close()
             self._image = None
-            if self._file_location:
-                self._raw_image = None
-        self.loaded = False
-        
+
+    # ------------------------------------------------------------------
+    # Data access (triggers load on first access)
+    # ------------------------------------------------------------------
+
     @property
     def image(self) -> Optional[PILImage.Image]:
-        if not self.loaded:
+        """The underlying PIL image. Loads on first access."""
+        if self._loader is None and self._image is None:
+            return None
+        if self._image is None:
             self.load()
         return self._image
-    
+
     @property
-    def data(self) -> NDArray:
-        if self.image is None: return None # Note image vs _image
-        return np.array(self.image)
+    def data(self) -> Optional[NDArray]:
+        """Numpy array of pixel data. Loads on first access."""
+        img = self.image
+        if img is None:
+            return None
+        return np.asarray(img)
+
+    # ------------------------------------------------------------------
+    # PIL attribute pass-through (width, height, size, etc.)
+    # ------------------------------------------------------------------
+
+    @property
+    def width(self) -> Optional[int]:
+        img = self.image
+        return img.width if img else None
+
+    @property
+    def height(self) -> Optional[int]:
+        img = self.image
+        return img.height if img else None
+
+    @property
+    def size(self) -> Optional[tuple]:
+        img = self.image
+        return img.size if img else None
+
+    def convert(self, mode: str) -> PILImage.Image:
+        """Convert to a PIL Image with the given mode. Triggers load."""
+        return self.image.convert(mode)
+
+    def copy(self) -> PILImage.Image:
+        """Return a copy of the underlying PIL Image. Triggers load."""
+        return self.image.copy()
+
+    def resize(self, size, resample=None) -> PILImage.Image:
+        """Resize and return a PIL Image. Triggers load."""
+        if resample is not None:
+            return self.image.resize(size, resample)
+        return self.image.resize(size)
+
+    def save(self, fp, format=None, **kwargs) -> None:
+        """Save the image to file. Triggers load."""
+        self.image.save(fp, format=format, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Representations
+    # ------------------------------------------------------------------
+
+    def _repr_png_(self):
+        """Jupyter notebook display support."""
+        img = self.image
+        if img is None:
+            return None
+        return img._repr_png_()
+
+    def __repr__(self) -> str:
+        status = "loaded" if self.loaded else "not loaded"
+        source = self._file_location or ("in-memory" if self._loader else "empty")
+        return f"LazyImage({source}, {status})"
+
+    # ------------------------------------------------------------------
+    # Context manager
+    # ------------------------------------------------------------------
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.unload()
+
+
+# ---------------------------------------------------------------------------
+# ImageVolume
+# ---------------------------------------------------------------------------
 
 class ImageVolume(ArrayView):
     """
-    Holder for set of images
+    Holder for a set of images, supporting lazy-loading and numpy-style indexing.
     """
-    def __init__(self, images: Optional[List[BaseImage]] = None,
-                 file_paths: Optional[List[str]] = None,
-                 mode:str = None):
+
+    def __init__(
+        self,
+        images: Optional[List[BaseImage]] = None,
+        file_paths: Optional[List[str]] = None,
+        mode: Optional[str] = None,
+    ):
         if images is not None:
             self._images = images
         else:
-            self._images = [ LazyImage(file_path, mode) for file_path in file_paths ]
-        
+            self._images = [LazyImage(file_path, mode) for file_path in file_paths]
+
     def _items(self) -> List[BaseImage]:
         return self._images

@@ -342,12 +342,7 @@ class Annotation:
 # MaskImage is now just a LazyImage used for masks — keep as-is for loading
 class MaskImage(LazyImage):
     """Lazy-loading mask image (backward compat)."""
-    @property
-    def image(self) -> Optional[PILImage.Image]:
-        if not isinstance(self._file_location, str):
-            if not self._raw_image:
-                return None
-        return super().image
+    pass
 
 
 class MaskVolume(ArrayView):
@@ -372,7 +367,7 @@ class MaskVolume(ArrayView):
     @property
     def images(self):
         from .image import ImageVolume
-        return ImageVolume([mask.image for mask in self._masks])
+        return ImageVolume(images=self._masks)
 
     @property
     def data(self) -> NDArray:

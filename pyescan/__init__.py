@@ -16,7 +16,7 @@ from .CELoader import (
     load_records_from_df,
 )
 from .core.annotation import Annotation, AnnotationEnface, AnnotationOCT, AnnotationSlice, AnnotationVolume
-from .core.image import ImageVolume, LazyImage
+from .core.image import ImageVolume, LazyImage, file_loader, generator_loader, url_loader
 from .core.metadata import MetadataRecord, MetadataView
 from .core.scan import BaseScan, SingleImageScan
 from .core.scan_enface import ColorFundusScan, EnfaceScan, FAFScan, IRScan
@@ -51,6 +51,9 @@ __all__ = [
     # Images
     "LazyImage",
     "ImageVolume",
+    "file_loader",
+    "url_loader",
+    "generator_loader",
     # Metadata
     "MetadataRecord",
     "MetadataView",

@@ -163,11 +163,11 @@ class TestOCTScanMethods:
 
         # Preload should not crash
         scan.preload()
-        assert scan.bscans[0].image.loaded is True
+        assert scan.bscans[0]._img_source.loaded is True
 
         # Unload should release
         scan.unload()
-        assert scan.bscans[0].image.loaded is False
+        assert scan.bscans[0]._img_source.loaded is False
 
     def test_indexing(self, oct_sdb_path):
         from pyescan.CELoader import load_record_from_CE
