@@ -3,7 +3,7 @@ import logging
 import numpy as np
 from PIL import Image as PILImage
 
-from .core.annotation import AnnotationOCT, MaskImage, MaskVolume
+from .core.annotation import Annotation, AnnotationSlice, AnnotationVolume
 from .tools.dataset_utils import summarise_dataset
 
 logger = logging.getLogger(__name__)
@@ -111,24 +111,16 @@ def _validate_annotation_dataframe(df, file_path_col='file_path', index_col='bsc
         )
 
 
-def _build_annotation_from_file_paths(file_paths):  # TODO - move to annotation constructor
-    masks = list()
-    for file_path in file_paths:
-        mask_img = MaskImage(file_path=file_path, mode='L')
-        masks.append(mask_img)
-    mask_array = MaskVolume(masks)
-    annotation = AnnotationOCT(masks=mask_array)
-    return annotation
+def _build_annotation_from_file_paths(file_paths):
+    """Build an Annotation from a list of file paths (one per B-scan slice)."""
+    slices = [AnnotationSlice(file_path=fp) for fp in file_paths]
+    return Annotation(slices=AnnotationVolume(slices))
 
-def _build_annotation_from_array(data):  # TODO - move to annotation constructor
-    masks = list()
-    for bscan_data in data:
-        pil_img = PILImage.fromarray(bscan_data.astype(np.uint8))
-        mask_img = MaskImage(raw_image=pil_img, mode='L')
-        masks.append(mask_img)
-    mask_array = MaskVolume(masks)
-    annotation = AnnotationOCT(masks=mask_array)
-    return annotation
+
+def _build_annotation_from_array(data):
+    """Build an Annotation from a 3D numpy array (n_bscans x H x W)."""
+    slices = [AnnotationSlice(raster=bscan_data.astype(np.uint8)) for bscan_data in data]
+    return Annotation(slices=AnnotationVolume(slices))
 
 def _build_annotation_from_dataframe_base(df, file_path_col='file_path', index_col='bscan_index'):
     df = df.copy()
@@ -178,7 +170,7 @@ def load_annotation_from_df(df, file_path_col='file_path', index_col='bscan_inde
 
     Returns
     -------
-    AnnotationOCT or dict[str, AnnotationOCT]
+    Annotation or dict[str, Annotation]
         Single annotation or dict of annotations keyed by feature name.
 
     Raises

@@ -13,7 +13,7 @@ from pyescan.annotation_loader import (
     _build_annotation_from_array,
     _build_annotation_from_file_paths,
 )
-from pyescan.core.annotation import AnnotationOCT
+from pyescan.core.annotation import Annotation
 
 
 class TestAnnotationFromDataFrame:
@@ -26,7 +26,8 @@ class TestAnnotationFromDataFrame:
             "bscan_index": list(range(5)),
         })
         ann = load_annotation_from_df(df)
-        assert isinstance(ann, AnnotationOCT)
+        assert isinstance(ann, Annotation)
+        assert ann.is_volume
         assert ann.data.shape == (5, 64, 64)
 
     def test_load_with_features(self, tmp_mask_dir):
@@ -40,7 +41,7 @@ class TestAnnotationFromDataFrame:
         assert isinstance(result, dict)
         assert "GA" in result
         assert "drusen" in result
-        assert isinstance(result["GA"], AnnotationOCT)
+        assert isinstance(result["GA"], Annotation)
 
     def test_not_a_dataframe_raises(self):
         with pytest.raises(TypeError, match="Expected a pandas DataFrame"):
@@ -75,7 +76,7 @@ class TestAnnotationFromDataFrame:
             "bscan_index": [0, 2, 4],
         })
         ann = load_annotation_from_df(df, allow_gaps=True)
-        assert isinstance(ann, AnnotationOCT)
+        assert isinstance(ann, Annotation)
 
     def test_allow_gaps_still_catches_duplicates(self, tmp_mask_dir):
         file_paths = [str(tmp_mask_dir / "scan1_0.png")] * 2
@@ -104,7 +105,7 @@ class TestAnnotationFromDataFrame:
         })
         # Should not raise
         ann = load_annotation_from_df(df, validate=False)
-        assert isinstance(ann, AnnotationOCT)
+        assert isinstance(ann, Annotation)
 
     def test_per_feature_validation(self, tmp_mask_dir):
         file_paths = [str(tmp_mask_dir / "scan1_0.png")] * 4
@@ -123,7 +124,8 @@ class TestAnnotationFromArray:
     def test_build_from_array(self):
         data = np.random.randint(0, 255, (5, 64, 64), dtype=np.uint8)
         ann = _build_annotation_from_array(data)
-        assert isinstance(ann, AnnotationOCT)
+        assert isinstance(ann, Annotation)
+        assert ann.is_volume
         assert ann.data.shape == (5, 64, 64)
 
 
@@ -138,7 +140,7 @@ class TestAnnotationFromFolder:
         assert isinstance(annotations, dict)
         assert "GA" in annotations
         assert "drusen" in annotations
-        assert isinstance(annotations["GA"], AnnotationOCT)
+        assert isinstance(annotations["GA"], Annotation)
 
     def test_nonexistent_folder_raises(self, tmp_path):
         empty_dir = tmp_path / "empty"
