@@ -187,29 +187,33 @@ def summarise_dataset(
     import re
 
     import pandas as pd
-    import tqdm
+
+    from .file_discovery import find_files as _find_files_glob
 
     dataset_root = os.path.abspath(dataset_root)
 
-    regex_pattern = regex if regex else structure_to_regex(structure)
+    # If a custom regex is provided, fall back to os.walk (can't glob from arbitrary regex)
+    if regex:
+        import tqdm
 
-    records = list()
-    pbar = tqdm.tqdm(os.walk(dataset_root)) if progress else os.walk(dataset_root)
-    for root, _dirs, filenames in pbar:
-        for filename in filenames:
-            file_path = os.path.join(root, filename)
-            rel_path = os.path.relpath(file_path, dataset_root)
+        regex_compiled = re.compile(regex)
+        records = list()
+        pbar = tqdm.tqdm(os.walk(dataset_root)) if progress else os.walk(dataset_root)
+        for root, _dirs, filenames in pbar:
+            for filename in filenames:
+                file_path = os.path.join(root, filename)
+                rel_path = os.path.relpath(file_path, dataset_root)
+                match = regex_compiled.match(rel_path)
+                if match:
+                    record = {"file_path": file_path, "file_path_relative": rel_path}
+                    record.update(match.groupdict())
+                    records.append(record)
+            if progress:
+                pbar.set_postfix({"scans_found": len(records)})
+        return pd.DataFrame(records)
 
-            match = re.match(regex_pattern, rel_path)
-            if match:
-                record = {"file_path": file_path, "file_path_relative": rel_path}
-                record.update(match.groupdict())
-                records.append(record)
-
-        if progress:
-            pbar.set_postfix({"scans_found": len(records)})
-
-    return pd.DataFrame(records)
+    # Use glob-based fast path
+    return _find_files_glob(dataset_root, structure, progress=progress)
 
 
 def get_median_bscans(df, scan_id_key=None, index_key="bscan_index"):

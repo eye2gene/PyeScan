@@ -1,23 +1,27 @@
-from abc import ABCMeta, abstractmethod, abstractproperty
+from __future__ import annotations
+
+import contextlib
+from abc import ABCMeta, abstractmethod
 from functools import cached_property
+from typing import TYPE_CHECKING
 
-from numpy.typing import NDArray
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+    from PIL import Image as PILImage
 
-from .annotation import Annotation
-from .image import BaseImage
-from .metadata import MetadataView
+    from .annotation import Annotation
+    from .image import LazyImage
+    from .metadata import MetadataView
 
 
 class BaseScan(
     metaclass=ABCMeta
 ):  # We could probably make this into a metaclass itself
     def __init__(
-        self, metadata: MetadataView = None, parent: "BaseScan" = None, *args, **kwargs
+        self, metadata: MetadataView = None, parent: BaseScan = None, *args, **kwargs
     ):
         self._record = None
-        self._group_id = (
-            None  # This should uniquely identify the high-level scan within the record
-        )
+        # self._group_id = None # This should uniquely identify the high-level scan within the record
 
         self._metadata = metadata  # MetadataView onto a record
 
@@ -26,7 +30,7 @@ class BaseScan(
         self._parent = parent
 
     def __repr__(self):
-        return self.__class__.__name__
+        return f"{self.__class__.__name__}(source_id={self.source_id})"
 
     def __str__(self):
         return str(self.__repr__())
@@ -56,27 +60,32 @@ class BaseScan(
     def add_annotation(
         self, feature_name: str, annotation: Annotation, color=None
     ) -> None:
-        annotation._scan = self
+        annotation.feature_name = feature_name
         if color is not None:
-            annotation._color = color
+            annotation.color = color
+        if hasattr(self, "source_id"):
+            with contextlib.suppress(Exception):
+                annotation.source_id = annotation.source_id or self.source_id
         self._annotations[feature_name] = annotation
 
     def add_annotations(self, annotation_dict: dict[str, Annotation]) -> None:
         for feature_name, annotation in annotation_dict.items():
             self.add_annotation(feature_name, annotation)
 
-    def set_parent(self, parent_scan: "BaseScan"):
+    def set_parent(self, parent_scan: BaseScan):
         self._parent = parent_scan
 
     @property
     def annotations(self) -> dict[str, Annotation]:
         return self._annotations
 
-    @abstractproperty
-    def image(self) -> BaseImage:
+    @property
+    @abstractmethod
+    def image(self) -> PILImage.Image:
         raise NotImplementedError()
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def data(self) -> NDArray:
         raise NotImplementedError()
 
@@ -117,33 +126,34 @@ class BaseScan(
 class SingleImageScan(BaseScan):
     """Base class for scan as a single image / bscan"""
 
-    def __init__(self, image: BaseImage, *args, **kwargs):
+    def __init__(self, image: LazyImage, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._image = image
+        self._img_source = image
 
     def _repr_png_(self):
-        return self._image._repr_png_()
+        return self._img_source._repr_png_()
 
     def __array__(self):
-        return self._image.data
+        return self._img_source.data
 
     @property
-    def image(self) -> BaseImage:
-        return self._image
+    def image(self) -> PILImage.Image:
+        """The PIL Image for this scan (loaded on first access)."""
+        return self._img_source.image
 
     @property
     def data(self) -> NDArray:
-        return self._image.data
+        return self._img_source.data
 
     @property
     def shape(self):  # TODO: Type annotation
-        return self._image.data.shape
+        return self._img_source.data.shape
 
     def plot_image(self, include_annotations=False):
         raise NotImplementedError()
 
     def preload(self) -> None:
-        self._image.load()
+        self._img_source.load()
 
     def unload(self) -> None:
-        self._image.unload()
+        self._img_source.unload()

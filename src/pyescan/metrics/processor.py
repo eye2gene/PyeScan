@@ -25,7 +25,7 @@ class MetricProcessor:
             cache = {}
         if stat in entry_data:
             return entry_data[stat]
-        elif stat in cache["computed_stats"]:
+        elif stat in cache.get("computed_stats", {}):
             return cache["computed_stats"][stat]
         raise ValueError(
             f"A method tried to get {stat} from entry, but it was not found!\n\n Entry:\n{entry_data}\n\nCache:\n{cache}"

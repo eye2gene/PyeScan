@@ -54,6 +54,16 @@ def get_mask_pixel_counts(
 
 
 @pyescan_metric()
+def get_underlying_intensity(
+    image: Spec[np.array], mask: Spec[np.array]
+) -> tuple[MaskStat[float], MaskStat[float]]:
+    masked_values = image[mask.astype(bool)]
+    image_masked_intensity_mean = masked_values.mean()
+    image_masked_intensity_std = masked_values.std()
+    return image_masked_intensity_mean, image_masked_intensity_std
+
+
+@pyescan_metric()
 def get_fovea_enface_position(
     bscan_index: Meta[int],
     scan_width_px: Meta[int],

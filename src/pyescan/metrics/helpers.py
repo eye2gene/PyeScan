@@ -54,13 +54,15 @@ def run_on_dataframe(
     df,
     stat_name: str | list[str],
     col_mapping: dict[str, str] | None = None,
-    suffix: str = None,
+    suffix: str | None = None,
     auto_merge: bool = False,
     named_only: bool = False,
-    metric_list: list[Metric] = None,
+    metric_list: list[Metric] | None = None,
     threaded: bool = False,
 ):
 
+    if col_mapping is None:
+        col_mapping = {}
     metrics = metric_list or PYESCAN_GLOBAL_METRICS.metrics
     processor = MetricProcessor(metrics)
 

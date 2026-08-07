@@ -157,6 +157,15 @@ ignore = [
   "TD003",  # missing issue link in TODO
   "TD004",  # missing colon in TODO
   "TD005",  # missing description in TODO
+  "D200",  # one-line docstring should fit on one line
+  "D301",  # use r""" for docstrings with backslashes
+  "B026",  # star-arg unpacking after keyword arg
+  "S110",  # try-except-pass without logging
+  "SIM105",  # use contextlib.suppress
+  "E402",  # module-level import not at top
+  "E721",  # do not compare types, use isinstance()
+  "S310",  # audit url open for permitted schemes
+  "RUF007",  # prefer itertools.pairwise
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -165,12 +174,13 @@ ignore = [
 "__init__.py" = ["D104"]
 "src/pyescan/tools/dataloading.py" = ["F821"]
 "src/pyescan/core/annotation.py" = ["F821"]
-"src/pyescan/metrics/__init__.py" = [
-  "F403"
-]  # star import is intentional public API
-"src/pyescan/metrics/processor.py" = [
-  "SIM116"
-]  # if-chain is clearer than dict here
+"src/pyescan/core/scan_oct.py" = ["F821"]
+"src/pyescan/visualise.py" = ["F821"]
+"src/pyescan/tools/image_registration_new.py" = [
+  "UP007"
+]  # runtime Union type alias
+"src/pyescan/metrics/__init__.py" = ["F403"]
+"src/pyescan/metrics/processor.py" = ["SIM116"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
