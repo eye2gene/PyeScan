@@ -251,7 +251,9 @@ class CrystalEyeParserCSV(MetadataParserCSV):
     def _get_records_subset(self, metadata_record, view_info):
         df = metadata_record.raw
         if "scan_number" in view_info:
-            metadata_record.raw.source_id.unique()[view_info["scan_number"]]
+            scan_number = metadata_record.raw.source_id.unique()[  # noqa: F841
+                view_info["scan_number"]
+            ]
             df = df.query("source_id == @scan_number")
         if "image_number" in view_info:
             image_number = view_info["image_number"]
