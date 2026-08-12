@@ -408,6 +408,9 @@ def get_cleaned_poses(
             print(f"[optimize] worst edge: {worst} ({final_edge_errors[worst]:.3f})")
     else:
         optimized_poses = poses
+        outlier_edges = set()
+        untestable_edges = [e for e, s in edge_scores.items() if s is None]
+        final_edge_errors = {}
 
     # --- Centroid ---
     centroid = find_centroid_pose(optimized_poses)
