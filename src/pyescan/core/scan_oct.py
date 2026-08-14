@@ -1,8 +1,6 @@
 import numpy as np
-from IPython.display import display
 from numpy.typing import NDArray
 from PIL import Image as PILImage
-from skimage.transform import ProjectiveTransform, warp
 
 from .image import ImageVolume
 from .scan import BaseScan, SingleImageScan
@@ -67,6 +65,8 @@ class OCTScan(BaseScan):
         return self._bscans._repr_png_()
 
     def _ipython_display_(self):
+        from IPython.display import display
+
         display(self._build_display_widget())
 
     def __getitem__(self, index: int):
@@ -127,8 +127,16 @@ class OCTScan(BaseScan):
             locations.append((location_start, location_end))
         return np.array(locations)
 
-    def _get_enface_transform(self, input_shape=None) -> ProjectiveTransform:
+    def _get_enface_transform(self, input_shape=None):
         """Input shape should be h x w"""
+        try:
+            from skimage.transform import ProjectiveTransform
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "OCT/enface projection requires the 'projection' extra; "
+                "install it with `pip install 'pyescan[projection]'`."
+            ) from exc
+
         bscan_locations = self.get_bscan_enface_locations()
         destination_pts = np.float32(
             [
@@ -180,6 +188,14 @@ class OCTScan(BaseScan):
         NDArray
             Warped array in enface pixel coordinates.
         """
+        try:
+            from skimage.transform import warp
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "OCT/enface projection requires the 'projection' extra; "
+                "install it with `pip install 'pyescan[projection]'`."
+            ) from exc
+
         image = np.array(image)
         enface_h, enface_w = self.enface.image.height, self.enface.image.width
 

@@ -4,10 +4,8 @@ from collections import defaultdict
 from functools import cache
 from itertools import combinations
 
-import ipywidgets as widgets
 import matplotlib.pyplot as plt
 import numpy as np
-from IPython.display import display
 from PIL import Image as PILImage
 from scipy.optimize import least_squares
 from scipy.sparse import lil_matrix
@@ -435,6 +433,8 @@ def get_cleaned_poses(
 
 
 def visualise_poses(poses, node_paths=None, targ_shape=None, figsize=(8, 8)):
+    import ipywidgets as widgets
+    from IPython.display import display
     from rtnls_registration.transformation import ProjectiveTransform
 
     @cache

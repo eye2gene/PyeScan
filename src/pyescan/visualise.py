@@ -13,7 +13,6 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image as PILImage
-from scipy.ndimage import gaussian_filter
 
 
 def scan_summary(scan) -> str:
@@ -78,6 +77,13 @@ def postprocess_mask(
         Masked array suitable for plt.contour / plt.imshow.
     """
     if smooth > 0:
+        try:
+            from scipy.ndimage import gaussian_filter
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Mask smoothing requires the 'metrics' extra; "
+                "install it with `pip install 'pyescan[metrics]'`."
+            ) from exc
         mask = gaussian_filter(mask.astype(np.float32), sigma=smooth)
     else:
         mask = mask.astype(np.float32)

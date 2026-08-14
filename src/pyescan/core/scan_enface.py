@@ -1,4 +1,3 @@
-from IPython.display import display
 from numpy.typing import NDArray
 
 from .scan import SingleImageScan
@@ -28,6 +27,8 @@ class EnfaceScan(SingleImageScan):
         return enface_display_widget(enface_image, width=320, height=320)
 
     def _ipython_display_(self):
+        from IPython.display import display
+
         display(self._build_display_widget())
 
 
