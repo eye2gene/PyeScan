@@ -1,4 +1,3 @@
-from IPython.display import display
 from numpy.typing import NDArray
 
 from .scan import SingleImageScan
@@ -28,6 +27,14 @@ class EnfaceScan(SingleImageScan):
         return enface_display_widget(enface_image, width=320, height=320)
 
     def _ipython_display_(self):
+        try:
+            from IPython.display import display
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Notebook display requires the 'jupyter' extra; "
+                "install it with `pip install 'pyescan[jupyter]'`."
+            ) from exc
+
         display(self._build_display_widget())
 
 

@@ -4,10 +4,8 @@ from collections import defaultdict
 from functools import cache
 from itertools import combinations
 
-import ipywidgets as widgets
 import matplotlib.pyplot as plt
 import numpy as np
-from IPython.display import display
 from PIL import Image as PILImage
 from scipy.optimize import least_squares
 from scipy.sparse import lil_matrix
@@ -435,6 +433,14 @@ def get_cleaned_poses(
 
 
 def visualise_poses(poses, node_paths=None, targ_shape=None, figsize=(8, 8)):
+    try:
+        import ipywidgets as widgets
+        from IPython.display import display
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Interactive pose visualisation requires the 'jupyter' extra; "
+            "install it with `pip install 'pyescan[jupyter]'`."
+        ) from exc
     from rtnls_registration.transformation import ProjectiveTransform
 
     @cache
