@@ -433,8 +433,14 @@ def get_cleaned_poses(
 
 
 def visualise_poses(poses, node_paths=None, targ_shape=None, figsize=(8, 8)):
-    import ipywidgets as widgets
-    from IPython.display import display
+    try:
+        import ipywidgets as widgets
+        from IPython.display import display
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Interactive pose visualisation requires the 'jupyter' extra; "
+            "install it with `pip install 'pyescan[jupyter]'`."
+        ) from exc
     from rtnls_registration.transformation import ProjectiveTransform
 
     @cache

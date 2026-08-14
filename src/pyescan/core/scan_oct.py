@@ -65,7 +65,13 @@ class OCTScan(BaseScan):
         return self._bscans._repr_png_()
 
     def _ipython_display_(self):
-        from IPython.display import display
+        try:
+            from IPython.display import display
+        except ModuleNotFoundError as exc:
+            raise ModuleNotFoundError(
+                "Notebook display requires the 'jupyter' extra; "
+                "install it with `pip install 'pyescan[jupyter]'`."
+            ) from exc
 
         display(self._build_display_widget())
 

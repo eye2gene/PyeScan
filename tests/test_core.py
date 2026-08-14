@@ -2,6 +2,8 @@
 Tests for core scan, image, and metadata classes.
 """
 
+import builtins
+
 import numpy as np
 import pytest
 from PIL import Image as PILImage
@@ -12,7 +14,7 @@ from pyescan.core.metadata import (
     MetadataView,
 )
 from pyescan.core.scan_building import ScanBuildError
-from pyescan.core.scan_enface import FAFScan
+from pyescan.core.scan_enface import EnfaceScan, FAFScan
 from pyescan.core.scan_oct import BScan, OCTScan
 from pyescan.core.utils import _pad_array, _stack_arrays_with_empties
 
@@ -185,6 +187,40 @@ class TestOCTScanMethods:
         scans = load_record_from_CE(oct_sdb_path)
         scan = scans[0]
         assert len(scan) == 25
+
+
+@pytest.mark.parametrize(
+    "display_method",
+    [EnfaceScan._ipython_display_, OCTScan._ipython_display_],
+)
+def test_notebook_display_explains_missing_jupyter_extra(monkeypatch, display_method):
+    real_import = builtins.__import__
+
+    def import_without_ipython(name, *args, **kwargs):
+        if name == "IPython.display":
+            raise ModuleNotFoundError("No module named 'IPython'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_without_ipython)
+
+    with pytest.raises(ModuleNotFoundError, match=r"pyescan\[jupyter\]"):
+        display_method(object())
+
+
+def test_pose_visualisation_explains_missing_jupyter_extra(monkeypatch):
+    from pyescan.tools.image_registration import visualise_poses
+
+    real_import = builtins.__import__
+
+    def import_without_ipython(name, *args, **kwargs):
+        if name == "IPython.display":
+            raise ModuleNotFoundError("No module named 'IPython'")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", import_without_ipython)
+
+    with pytest.raises(ModuleNotFoundError, match=r"pyescan\[jupyter\]"):
+        visualise_poses({})
 
 
 class TestArrayView:
