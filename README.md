@@ -16,6 +16,7 @@ uv pip install pyescan   # or: pip install pyescan
 # With optional extras
 uv pip install "pyescan[registration]"  # image registration (scipy)
 uv pip install "pyescan[metrics]"       # metrics with OpenCV and scikit-image
+uv pip install "pyescan[projection]"    # OCT/enface projection with scikit-image
 uv pip install "pyescan[jupyter]"       # Jupyter notebook support
 uv pip install "pyescan[all]"           # everything
 ```
@@ -31,6 +32,30 @@ uv sync --all-extras   # installs core + all optional extras + dev tools
 ```
 
 This creates a `.venv`, installs pyescan in editable mode, and pins all dependencies to the exact versions in `uv.lock`.
+
+## Releasing
+
+Releases are built and published by GitHub Actions when a version tag is pushed.
+PyPI authentication uses a Trusted Publisher, so no API token is stored in the
+repository.
+
+1. Update the version and commit it:
+
+   ```bash
+   uv version 0.1.0
+   git add pyproject.toml uv.lock
+   git commit -m "chore: release 0.1.0"
+   ```
+
+2. Tag that exact commit and push the tag:
+
+   ```bash
+   git tag -a v0.1.0 -m "PyeScan 0.1.0"
+   git push origin v0.1.0
+   ```
+
+The release workflow runs quality checks and tests, builds and smoke-tests both
+distribution formats, publishes them to PyPI, and creates a GitHub release.
 
 ## Project structure
 

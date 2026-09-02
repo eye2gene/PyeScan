@@ -23,11 +23,10 @@ qa:
     -uv run ty check .
     uv audit
 
-# Check formatting, linting and type checking (no fixes, for CI)
+# Check formatting, linting and dependencies (no fixes, for CI)
 ci:
     uv run ruff format --check .
     uv run ruff check .
-    uv run ty check .
     uv audit
 
 # Check dependency licenses
@@ -62,7 +61,14 @@ pdb *ARGS:
 build:
     rm -rf build
     rm -rf dist
-    uv build
+    uv build --no-sources
+    uv run twine check dist/*
+    just smoke-dist
+
+# Test the wheel and sdist in environments containing only declared dependencies
+smoke-dist:
+    uv run --isolated --no-project --with dist/*.whl tests/smoke_test.py
+    uv run --isolated --no-project --with dist/*.tar.gz tests/smoke_test.py
 
 # remove all build, test, coverage and Python artifacts
 clean:

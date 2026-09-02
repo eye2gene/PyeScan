@@ -2,9 +2,20 @@ import colorsys
 import io
 
 import numpy as np
-from ipywidgets import widgets
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFont
+
+
+def _load_widgets():
+    """Import the optional Jupyter widgets dependency on demand."""
+    try:
+        from ipywidgets import widgets
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Interactive notebook views require the 'jupyter' extra; "
+            "install it with `pip install 'pyescan[jupyter]'`."
+        ) from exc
+    return widgets
 
 
 def _encode_image(image, default="blank"):
@@ -20,6 +31,7 @@ def _encode_image(image, default="blank"):
 
 
 def image_array_display_widget(images, width=320, height=320, return_slider=False):
+    widgets = _load_widgets()
     encoded_volume = [_encode_image(image) for image in images]
     n_images = len(encoded_volume)
 
@@ -85,6 +97,7 @@ def draw_bscan_lines(enface_image, bscan_positions, bscan_index=None, draw_pos=F
 
 
 def enface_display_widget(image, width=320, height=320):
+    widgets = _load_widgets()
     encoded_enface = _encode_image(image)
     w_image_enface = widgets.Image(value=encoded_enface, width=width, height=height)
     return w_image_enface
@@ -93,6 +106,7 @@ def enface_display_widget(image, width=320, height=320):
 def oct_display_widget(
     images, enface_image, bscan_locations=None, width=640, height=320, enface_size=320
 ):
+    widgets = _load_widgets()
 
     # Create an image widget for displaying images
     encoded_enface = _encode_image(enface_image)
