@@ -1,6 +1,6 @@
 {
   "template": "https://github.com/eye2Gene/e2g-pypkg",
-  "commit": "6bf4f5a9a85e4d8463c7b0ff9a5268ad73ad850b",
+  "commit": "27e1d68c13c07835ced40fb9797eed68388caddb",
   "skip": [],
   "context": {
     "cookiecutter": {
@@ -12,7 +12,7 @@
       "project_short_description": "A Python library for working with retinal scans exported by Private Eye / Crystal Eye",
       "publish_to": "pypi_org",
       "_template": "https://github.com/eye2Gene/e2g-pypkg",
-      "_commit": "6bf4f5a9a85e4d8463c7b0ff9a5268ad73ad850b"
+      "_commit": "27e1d68c13c07835ced40fb9797eed68388caddb"
     }
   },
   "checkout": null
