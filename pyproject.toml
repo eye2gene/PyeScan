@@ -68,8 +68,8 @@ test = [
 tools = ["cruft", "rust-just"]
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.9.0,<0.13.0"]
+build-backend = "uv_build"
 
 [tool.coverage.report]
 omit = ["__main__.py"]
@@ -87,24 +87,8 @@ exclude_also = [
   "if __name__ == .__main__.:",
 ]
 
-[tool.hatch.build.targets.sdist]
-include = ["src"]
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/pyescan"]
-
 [tool.pytest]
-addopts = [
-  "--cov-branch",
-  "--cov-report=term-missing:skip-covered",
-  "--cov-report=xml",
-  "--cov=src/",
-  "--cov=tests/",
-  "--dist=loadscope",
-  "--durations=5",
-  "-n",
-  "0"
-]
+addopts = ["--cov-branch", "--cov-report=term-missing:skip-covered", "--cov-report=xml", "--cov=src/", "--cov=tests/", "--dist=loadscope", "--durations=5", "-n", "0"]
 filterwarnings = []
 testpaths = ["tests"]
 
@@ -176,9 +160,7 @@ ignore = [
 "src/pyescan/core/annotation.py" = ["F821"]
 "src/pyescan/core/scan_oct.py" = ["F821"]
 "src/pyescan/visualise.py" = ["F821"]
-"src/pyescan/tools/image_registration_new.py" = [
-  "UP007"
-]  # runtime Union type alias
+"src/pyescan/tools/image_registration_new.py" = ["UP007"]  # runtime Union type alias
 "src/pyescan/metrics/__init__.py" = ["F403"]
 "src/pyescan/metrics/processor.py" = ["SIM116"]
 
@@ -207,7 +189,4 @@ include = ["src"]
 exclude-newer = "7 days"
 package = true
 default-groups = ["dev"]
-cache-keys = [
-  { file = "pyproject.toml" },
-  { git = { commit = true, tags = true } }
-]
+cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
