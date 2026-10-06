@@ -107,6 +107,8 @@ docs/_build/
 
 # Generated files
 *.svg
+# ...except the committed coverage badge, referenced by the README via relative path
+!assets/coverage.svg
 
 # Project-specific
 _temp

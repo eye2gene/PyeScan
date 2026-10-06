@@ -1,5 +1,15 @@
 # PyeScan
 
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/eye2gene/PyeScan/graphs/commit-activity)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Coverage](./assets/coverage.svg)](https://github.com/eye2gene/PyeScan)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![ty](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ty/main/assets/badge/v0.json)](https://github.com/astral-sh/ty)
+[![just](https://img.shields.io/badge/just-command%20runner-black?logo=just&logoColor=white)](https://github.com/casey/just)
+[![PyPI](https://img.shields.io/pypi/v/pyescan?logo=pypi&logoColor=white)](https://pypi.org/project/pyescan/)
+[![Conventional Commits](https://img.shields.io/badge/commits-conventional-fe5196?logo=conventionalcommits&logoColor=white)](https://www.conventionalcommits.org/)
+
 PyeScan is a python library for streamlining the process of working with retinal scans in python and provide a common interface for various processes (e.g. running various models). The idea is for the main library to develop core, implementation-agnostic, functionality with various helpers/loaders/savers/views etc to deal with specific formats.
 
 ## Installation
@@ -63,8 +73,11 @@ distribution formats, publishes them to PyPI, and creates a GitHub release.
 PyeScan/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml          # Lint, type-check, test on every push/PR
-│       └── release.yml     # Semantic release + publish to PyPI
+│       ├── ci.yml              # Lint, type-check, test on every push/PR
+│       ├── coverage-badge.yml  # Regenerate the coverage badge after CI on main
+│       └── release.yml         # Build + publish to PyPI on version tags
+├── assets/
+│   └── coverage.svg        # Coverage badge, committed by CI
 ├── src/
 │   └── pyescan/
 │       ├── __init__.py
@@ -274,13 +287,11 @@ just build
 just list
 ```
 
-## How releases work
+Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, etc.).
+Work on a feature branch and open a PR against `main`; see [Releasing](#releasing) for how versions are published.
 
-This project uses [conventional commits](https://www.conventionalcommits.org/) and [python-semantic-release](https://python-semantic-release.readthedocs.io/):
-
-1. Develop on a feature branch with conventional commit messages (`feat:`, `fix:`, `docs:`, etc.)
-2. Open a PR and merge to `main`
-3. GitHub Actions automatically determines the next version, updates `CHANGELOG.md`, creates a tag/release, and publishes to PyPI
+After each successful CI run on `main`, the coverage badge (`assets/coverage.svg`) is regenerated
+from that run's report and committed automatically, so do not edit it by hand.
 
 ## Template updates
 
