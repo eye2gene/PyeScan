@@ -303,6 +303,11 @@ uv run cruft diff     # preview changes
 uv run cruft update   # apply updates
 ```
 
+`.github/workflows/release.yml` is listed under `skip` in `.cruft.json`, so template updates never touch it.
+The template releases with python-semantic-release on every push to `main`, whereas this project releases
+from version tags (see [Releasing](#releasing)). Template changes under `[tool.semantic_release]` in
+`pyproject.toml` will still show up as rejected hunks; they do not apply here and can be discarded.
+
 ## Roadmap
 
 - [ ] Full Ruff + Ty compliance pass
