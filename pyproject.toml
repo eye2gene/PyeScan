@@ -8,7 +8,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "William Woof", email = "William.woof@eye2gene.com" }]
 maintainers = [{ name = "William Woof", email = "William.woof@eye2gene.com" }]
-keywords = ["fundus", "medical imaging", "ophthalmology", "OCT", "retina"]
+keywords = ["OCT", "fundus", "medical imaging", "ophthalmology", "retina"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Intended Audience :: Science/Research",
@@ -32,8 +32,8 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/eye2gene/PyeScan"
-Repository = "https://github.com/eye2gene/PyeScan"
 Issues = "https://github.com/eye2gene/PyeScan/issues"
+Repository = "https://github.com/eye2gene/PyeScan"
 
 [project.scripts]
 pyescan = "pyescan.tools.cli:app"
@@ -200,5 +200,5 @@ exclude-newer = "7 days"
 exclude-newer-package = { gitpython = false }
 package = true
 required-version = ">=0.12.3,<0.13"
-default-groups = ["dev"]
+default-groups = ["dev", "lint", "test", "tools"]
 cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
