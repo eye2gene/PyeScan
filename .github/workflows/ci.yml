@@ -1,5 +1,8 @@
 name: CI
 
+# Runs on every push, including main: release.yml is tag-triggered here, so it
+# does not cover main pushes. A successful run on main also feeds
+# coverage-badge.yml.
 on:
   push:
     paths:
