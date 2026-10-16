@@ -81,7 +81,7 @@ test = [
 tools = ["cruft", "rust-just", "twine"]
 
 [build-system]
-requires = ["uv_build>=0.9.0,<0.13.0"]
+requires = ["uv_build>=0.9.0,<1.0"]
 build-backend = "uv_build"
 
 [tool.coverage.report]
@@ -199,6 +199,5 @@ exclude-newer = "7 days"
 # Security fixes should not be delayed by the general dependency cooldown.
 exclude-newer-package = { gitpython = false }
 package = true
-required-version = ">=0.12.3,<0.13"
 default-groups = ["dev", "lint", "test", "tools"]
 cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
