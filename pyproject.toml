@@ -3,7 +3,7 @@ name = "PyeScan"
 version = "0.0.2"
 description = "A Python library for working with retinal scans exported by Private Eye / Crystal Eye"
 readme = "README.md"
-requires-python = ">=3.12,<4.0"
+requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "William Woof", email = "William.woof@eye2gene.com" }]
@@ -102,7 +102,17 @@ exclude_also = [
 ]
 
 [tool.pytest]
-addopts = ["--cov-branch", "--cov-report=term-missing:skip-covered", "--cov-report=xml", "--cov=src/", "--cov=tests/", "--dist=loadscope", "--durations=5", "-n", "0"]
+addopts = [
+  "--cov-branch",
+  "--cov-report=term-missing:skip-covered",
+  "--cov-report=xml",
+  "--cov=src/",
+  "--cov=tests/",
+  "--dist=loadscope",
+  "--durations=5",
+  "-n",
+  "0"
+]
 filterwarnings = []
 testpaths = ["tests"]
 
@@ -174,7 +184,9 @@ ignore = [
 "src/pyescan/core/annotation.py" = ["F821"]
 "src/pyescan/core/scan_oct.py" = ["F821"]
 "src/pyescan/visualise.py" = ["F821"]
-"src/pyescan/tools/image_registration_new.py" = ["UP007"]  # runtime Union type alias
+"src/pyescan/tools/image_registration_new.py" = [
+  "UP007"
+]  # runtime Union type alias
 "src/pyescan/metrics/__init__.py" = ["F403"]
 "src/pyescan/metrics/processor.py" = ["SIM116"]
 
@@ -200,4 +212,7 @@ exclude-newer = "7 days"
 exclude-newer-package = { gitpython = false }
 package = true
 default-groups = ["dev", "lint", "test", "tools"]
-cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true, tags = true } }]
+cache-keys = [
+  { file = "pyproject.toml" },
+  { git = { commit = true, tags = true } }
+]
