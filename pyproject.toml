@@ -209,7 +209,7 @@ include = ["src"]
 [tool.uv]
 exclude-newer = "7 days"
 # Security fixes should not be delayed by the general dependency cooldown.
-exclude-newer-package = { gitpython = false }
+exclude-newer-package = { gitpython = false, certifi = "2026-10-21T00:00:00Z" }  # certifi: PYSEC-2026-4320 fix, drop it after 2026-10-27
 package = true
 default-groups = ["dev", "lint", "test", "tools"]
 cache-keys = [
