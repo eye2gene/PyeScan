@@ -95,7 +95,7 @@ exclude_also = [
   "class .*\\bProtocol\\):",
   "@(abc\\.)?abstractmethod",
   "raise NotImplementedError",
-  "\\.\\.\\.",
+  "^\\s*\\.\\.\\.\\s*$",  # a stub body alone on its line; unanchored, it hid every def with Callable[..., X]
   "no cov",
   "if __name__ == .__main__.:",
 ]
