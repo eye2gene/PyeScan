@@ -46,11 +46,13 @@ up *ARGS:
     uv sync --exclude-newer "7 days" --all-extras
     just build
 
-# Run all the tests, but allow for arguments to be passed
+# Run all the tests, but allow for arguments to be passed. Coverage is measured on src/ and tests/, so the report
+# lists test code that never ran, but the floor (fail_under in pyproject.toml) applies to src/ alone
 test *ARGS:
     @echo "Running with arg: {{ ARGS }}"
     uv run pytest {{ ARGS }}
-    @echo "See htmlcov/index.html for detailed coverage report"
+    uv run coverage xml --include='src/*' --fail-under=0 -q
+    @total=$(uv run coverage report --include='src/*' --format=total); rc=$?; echo "src/ coverage: $total% (floor: fail_under in pyproject.toml)"; exit $rc
 
 # Run all the tests, but on failure, drop into the debugger (sequential: -n0 required for pdb)
 pdb *ARGS:
