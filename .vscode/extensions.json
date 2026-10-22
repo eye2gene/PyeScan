@@ -4,8 +4,8 @@
     "ms-python.python", // Python language support
     "ms-python.vscode-pylance", // For completions/IntelliSense only
     "ms-python.debugpy", // Python debugging
-    "astral-sh.ty", // Astral Typer for Python type checking (preferred over mypy)
-    "charliermarsh.ruff-vscode", // Ruff linting integration
+    "astral-sh.ty", // ty, Astral's type checker (preferred over mypy)
+    "charliermarsh.ruff", // Ruff linting and formatting (the editor.defaultFormatter in settings.json)
     "ryanluker.vscode-coverage-gutters", // Code coverage
     // Git
     "eamodio.gitlens", // GitLens for enhanced Git capabilities
@@ -23,6 +23,6 @@
     "editorconfig.editorconfig", // EditorConfig support
     "esbenp.prettier-vscode", // Prettier for code formatting
     "streetsidesoftware.code-spell-checker", // Spell checking
-    "fill-labs.dependi" // Dependency graph
+    "fill-labs.dependi" // Dependency versions and updates
   ]
 }
