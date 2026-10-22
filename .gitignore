@@ -17,6 +17,7 @@ poetry.toml
 
 # Distribution / packaging
 .Python
+.release-tools/
 build/
 develop-eggs/
 dist/
