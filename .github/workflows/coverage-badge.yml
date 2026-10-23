@@ -44,7 +44,9 @@ jobs:
       - name: Render coverage badge
         run: |
           mkdir -p assets
-          uv run --locked --only-group badge genbadge coverage -i coverage.xml -o assets/coverage.svg -s
+          # --frozen: the locked versions and hashes, without re-checking the whole lock, which CI already did on this
+          # commit and which needs every path dependency (a repo's submodules are not checked out here)
+          uv run --frozen --only-group badge genbadge coverage -i coverage.xml -o assets/coverage.svg -s
 
       - name: Commit coverage badge if it changed
         env:
