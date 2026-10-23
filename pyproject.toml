@@ -78,6 +78,8 @@ test = [
   "ty",
 ]
 tools = ["cruft", "rust-just", "twine"]
+# The coverage badge renderer, run by release.yml's coverage-badge job from the lock (`uv run --only-group badge`)
+badge = ["genbadge[coverage]"]
 
 [build-system]
 requires = ["uv_build>=0.9.0,<1.0"]

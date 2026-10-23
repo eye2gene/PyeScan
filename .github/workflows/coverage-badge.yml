@@ -44,7 +44,7 @@ jobs:
       - name: Render coverage badge
         run: |
           mkdir -p assets
-          uvx --from "genbadge[coverage]" genbadge coverage -i coverage.xml -o assets/coverage.svg -s
+          uv run --locked --only-group badge genbadge coverage -i coverage.xml -o assets/coverage.svg -s
 
       - name: Commit coverage badge if it changed
         env:
